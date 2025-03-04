@@ -6,6 +6,8 @@ struct
     INT of int
   | ID of string
   | BLANK
+
+  (* reserved words *)
   | WHILE
   | FOR
   | TO
@@ -23,6 +25,31 @@ struct
   | DO
   | OF
   | NIL
+
+  (* punctuation *)
+  | COMMA
+  | COLON
+  | SEMI_COLON
+  | L_PAREN
+  | R_PAREN
+  | L_BRACKET
+  | R_BRACKET
+  | L_BRACE
+  | R_BRACE
+  | DOT
+  | PLUS
+  | MINUS
+  | ASTERISK
+  | SLASH
+  | EQUALS
+  | NOT_EQUALS
+  | LESS_THAN
+  | LESS_OR_EQUAL
+  | GREATER_THAN
+  | GREATER_THAN_OR_EQUAL
+  | AMPERSAND
+  | PIPE
+  | COLON_EQUALS
 
   fun getWordOrID str =
     case str of
