@@ -5,7 +5,6 @@ struct
   datatype token =
     INT of int
   | ID of string
-  | BLANK
 
   (* reserved words *)
   | WHILE
@@ -99,28 +98,28 @@ struct
     | ":=" => COLON_EQUALS
     | _ => raise Empty
 
-  fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct) =
+  fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
     let
       val max = Int.max (lastFinalID, lastFinalInt)
       val max = Int.max (max, lastFinalPunct)
       val str = String.substring (str, start, max - start + 1)
     in
       if max = lastFinalID then
-        (lastFinalID, getWordOrID str)
+        (lastFinalID, getWordOrID str :: acc)
       else if max = lastFinalInt then
         case Int.fromString str of
-          SOME num => (lastFinalInt, INT num)
+          SOME num => (lastFinalInt, INT num :: acc)
         | NONE => raise Size
       else
         (* max = lastFinalPunct *)
-        (lastFinalPunct, getPunct str)
+        (lastFinalPunct, getPunct str :: acc)
     end
 
-  fun getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct) =
+  fun getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
     if lastFinalID = ~1 andalso lastFinalInt = ~1 andalso lastFinalPunct = ~1 then
-      (start, BLANK)
+      (start, acc)
     else
-      getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
+      getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
 
   fun helpGetTokenEndPos
     ( pos
@@ -132,9 +131,10 @@ struct
     , lastFinalInt
     , lastFinalPunct
     , start
+    , acc
     ) =
     if pos = String.size str then
-      getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
+      getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
     else
       let
         val chr = String.sub (str, pos)
@@ -143,7 +143,7 @@ struct
         val newPunctState = PunctDfa.getNewState (chr, punctState)
       in
         if areAllDead (newIdState, newIntState) then
-          getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
+          getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
         else
           let
             val lastFinalID =
@@ -162,24 +162,31 @@ struct
               , lastFinalInt
               , lastFinalPunct
               , start
+              , acc
               )
           end
       end
 
-  fun getTokenEndPos (pos, str) =
+  fun getTokenEndPos (pos, str, acc) =
     helpGetTokenEndPos
-      (pos, str, IdDfa.start, IntDfa.start, PunctDfa.start, ~1, ~1, ~1, pos)
+      ( pos
+      , str
+      , IdDfa.start
+      , IntDfa.start
+      , PunctDfa.start
+      , ~1
+      , ~1
+      , ~1
+      , pos
+      , acc
+      )
 
   fun helpGetTokens (pos, str, acc) =
     if pos = String.size str then
       List.rev acc
     else
-      let
-        val (newPos, token) = getTokenEndPos (pos, str)
-      in
-        case token of
-          BLANK => helpGetTokens (pos + 1, str, acc)
-        | _ => helpGetTokens (newPos + 1, str, token :: acc)
+      let val (newPos, acc) = getTokenEndPos (pos, str, acc)
+      in helpGetTokens (newPos + 1, str, acc)
       end
 
   fun getTokens str = helpGetTokens (0, str, [])
