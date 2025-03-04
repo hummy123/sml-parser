@@ -7,8 +7,8 @@ struct
   val semicolon = 4
   val lparen = 5
   val rparen = 6
-  val lbreacket = 7
-  val rbreacket = 8
+  val lbracket = 7
+  val rbracket = 8
   val lbrace = 9
   val rbrace = 10
   val dot = 11
@@ -26,6 +26,34 @@ struct
   val notEquals = 21
   val lessThanOrEqual = 22
   val greaterThanOrEqual = 23
+  val start = 24
+
+  fun mkStart i =
+    let
+      val chr = Char.chr i
+    in
+      case chr of
+        #"," => comma
+      | #":" => colon
+      | #";" => semicolon
+      | #"(" => lparen
+      | #")" => rparen
+      | #"[" => lbracket
+      | #"]" => rbracket
+      | #"{" => lbrace
+      | #"}" => rbrace
+      | #"." => dot
+      | #"+" => plus
+      | #"-" => minus
+      | #"*" => asterisk
+      | #"/" => slash
+      | #"=" => equals
+      | #"<" => lessThan
+      | #">" => greaterThan
+      | #"&" => ampersand
+      | #"|" => pipe
+      | _ => dead
+    end
 
   fun mkDead _ = 0
 
@@ -36,7 +64,9 @@ struct
     let
       val chr = Char.chr i
     in
-      if i = #">" then notEquals else if i = #"=" then lessThanOrEqual else dead
+      if chr = #">" then notEquals
+      else if chr = #"=" then lessThanOrEqual
+      else dead
     end
 
   fun mkGreaterThan i =
@@ -78,6 +108,8 @@ struct
   val lessThanOrEqualTable = deadTable
   val greaterThanOrEqualTable = deadTable
 
+  val startTable = Vector.tabulate (255, mkStart)
+
   val states = vector
     [ deadTable
     , commaTable
@@ -103,9 +135,10 @@ struct
     , notEqualsTable
     , lessThanOrEqualTable
     , greaterThanOrEqualTable
+    , startTable
     ]
 
-  fun isFinal i = i <> dead
+  fun isFinal i = i <> dead andalso i <> start
 
   fun getNewState (chr, prevState) =
     let val table = Vector.sub (states, prevState)

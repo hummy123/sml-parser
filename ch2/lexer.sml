@@ -72,39 +72,78 @@ struct
     | "nil" => NIL
     | _ => ID str
 
-  fun getMax (str, start, lastFinalID, lastFinalInt) =
-    if lastFinalInt > lastFinalID then
-      let
-        val str = String.substring (str, start, lastFinalInt - start + 1)
-      in
+  fun getPunct str =
+    case str of
+      "," => COMMA
+    | "" => COLON
+    | ";" => SEMI_COLON
+    | "(" => L_PAREN
+    | ")" => R_PAREN
+    | "[" => L_BRACKET
+    | "]" => R_BRACKET
+    | "{" => L_BRACE
+    | "}" => R_BRACE
+    | "." => DOT
+    | "+" => PLUS
+    | "-" => MINUS
+    | "*" => ASTERISK
+    | "/" => SLASH
+    | "=" => EQUALS
+    | "<>" => NOT_EQUALS
+    | "<" => LESS_THAN
+    | "<=" => LESS_OR_EQUAL
+    | ">" => GREATER_THAN
+    | ">=" => GREATER_THAN_OR_EQUAL
+    | "&" => AMPERSAND
+    | "|" => PIPE
+    | ":=" => COLON_EQUALS
+    | _ => raise Empty
+
+  fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct) =
+    let
+      val max = Int.max (lastFinalID, lastFinalInt)
+      val max = Int.max (max, lastFinalPunct)
+      val str = String.substring (str, start, max - start + 1)
+    in
+      if max = lastFinalID then
+        (lastFinalID, getWordOrID str)
+      else if max = lastFinalInt then
         case Int.fromString str of
           SOME num => (lastFinalInt, INT num)
         | NONE => raise Size
-      end
-    else
-      let
-        val str = String.substring (str, start, lastFinalID - start + 1)
-        val token = getWordOrID str
-      in
-        (lastFinalID, token)
-      end
+      else
+        (* max = lastFinalPunct *)
+        (lastFinalPunct, getPunct str)
+    end
 
-  fun getToken (str, start, lastFinalID, lastFinalInt) =
-    if lastFinalID = ~1 andalso lastFinalInt = ~1 then (start, BLANK)
-    else getMax (str, start, lastFinalID, lastFinalInt)
+  fun getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct) =
+    if lastFinalID = ~1 andalso lastFinalInt = ~1 andalso lastFinalPunct = ~1 then
+      (start, BLANK)
+    else
+      getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
 
   fun helpGetTokenEndPos
-    (pos, str, idState, intState, lastFinalID, lastFinalInt, start) =
+    ( pos
+    , str
+    , idState
+    , intState
+    , punctState
+    , lastFinalID
+    , lastFinalInt
+    , lastFinalPunct
+    , start
+    ) =
     if pos = String.size str then
-      getToken (str, start, lastFinalID, lastFinalInt)
+      getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
     else
       let
         val chr = String.sub (str, pos)
         val newIdState = IdDfa.getNewState (chr, idState)
         val newIntState = IntDfa.getNewState (chr, intState)
+        val newPunctState = PunctDfa.getNewState (chr, punctState)
       in
         if areAllDead (newIdState, newIntState) then
-          getToken (str, start, lastFinalID, lastFinalInt)
+          getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct)
         else
           let
             val lastFinalID =
@@ -118,15 +157,18 @@ struct
               , str
               , newIdState
               , newIntState
+              , newPunctState
               , lastFinalID
               , lastFinalInt
+              , lastFinalPunct
               , start
               )
           end
       end
 
   fun getTokenEndPos (pos, str) =
-    helpGetTokenEndPos (pos, str, IdDfa.start, IntDfa.start, ~1, ~1, pos)
+    helpGetTokenEndPos
+      (pos, str, IdDfa.start, IntDfa.start, PunctDfa.start, ~1, ~1, ~1, pos)
 
   fun helpGetTokens (pos, str, acc) =
     if pos = String.size str then
