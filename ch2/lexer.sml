@@ -1,6 +1,7 @@
 structure Lexer =
 struct
-  fun areAllDead (idState, intState) = idState = 0 andalso intState = 0
+  fun areAllDead (idState, intState, punctState) =
+    idState = 0 andalso intState = 0 andalso punctState = 0
 
   datatype token =
     INT of int
@@ -265,12 +266,10 @@ struct
         val newPunctState = PunctDfa.getNewState (chr, punctState)
       in
         if chr = #"\"" then
-          let
-            val (newPos, str) = getString (pos + 1, str, [])
-          in
-            (newPos, STRING str :: acc)
+          let val (newPos, str) = getString (pos + 1, str, [])
+          in (newPos, STRING str :: acc)
           end
-        else if areAllDead (newIdState, newIntState) then
+        else if areAllDead (newIdState, newIntState, punctState) then
           getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
         else
           let
@@ -322,8 +321,7 @@ end
 
 fun ioToString (io, str) =
   case TextIO.inputLine io of
-    SOME tl =>
-      ioToString (io, str ^ tl)
+    SOME tl => ioToString (io, str ^ tl)
   | NONE => str
 
 fun main () =
