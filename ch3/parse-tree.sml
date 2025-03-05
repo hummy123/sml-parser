@@ -77,7 +77,7 @@ struct
         in
           (tl, tyEnv)
         end
-    | L.ID typeAlias :: L.ARRAY :: L.OF :: L.ID origTypeName :: tl => 
+    | L.ID typeAlias :: L.EQUALS :: L.ARRAY :: L.OF :: L.ID origTypeName :: tl => 
         let
           val tyEnv = TyEnv.add (typeAlias, ARRAY_DEC origTypeName, tyEnv)
         in

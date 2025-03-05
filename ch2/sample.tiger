@@ -3,3 +3,6 @@ type person = {
   age: int
 }
 
+type human = person
+
+type people = array of person
