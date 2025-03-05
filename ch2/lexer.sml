@@ -51,6 +51,8 @@ sig
 
   | EOF
 
+  val tokenToString: token -> string
+
   val getTokens: string -> token list
 end
 
@@ -109,6 +111,58 @@ struct
   | COLON_EQUALS
 
   | EOF
+
+  fun tokenToString tok =
+    case tok of
+      INT num => "INT(" ^ Int.toString num ^ ")"
+    | ID id => "ID(" ^ id ^ ")"
+    | STRING str => "STRING(" ^ str ^ ")"
+
+    (* reserved words *)
+    | WHILE => "WHILE"
+    | FOR => "FOR"
+    | TO => "to"
+    | BREAK => "break"
+    | LET => "let"
+    | IN => "in"
+    | END => "end"
+    | FUNCTION => "function"
+    | VAR => "var"
+    | TYPE => "type"
+    | ARRAY => "array"
+    | IF => "if"
+    | THEN => "then"
+    | ELSE => "else"
+    | DO => "do"
+    | OF => "of"
+    | NIL => "nil"
+
+    (* punctuation *)
+    | COMMA => ","
+    | COLON => ":"
+    | SEMI_COLON => ";"
+    | L_PAREN => "("
+    | R_PAREN => ")"
+    | L_BRACKET => "["
+    | R_BRACKET => "]"
+    | L_BRACE => "{"
+    | R_BRACE => "}"
+    | DOT => "."
+    | PLUS => "+"
+    | MINUS => "-"
+    | ASTERISK => "*"
+    | SLASH => "/"
+    | EQUALS => "="
+    | NOT_EQUALS => "<>"
+    | LESS_THAN => "<"
+    | LESS_OR_EQUAL => "<="
+    | GREATER_THAN => ">"
+    | GREATER_THAN_OR_EQUAL => ">="
+    | AMPERSAND => "&"
+    | PIPE => "|"
+    | COLON_EQUALS => ":="
+
+    | EOF => "EOF"
 
   fun getWordOrID str =
     case str of
@@ -379,13 +433,12 @@ end
 
 fun ioToString (io, str) =
   case TextIO.inputLine io of
-    SOME tl =>
-      ioToString (io, str ^ tl)
+    SOME tl => ioToString (io, str ^ tl)
   | NONE => str
 
 fun main () =
   let
-    val io = TextIO.openIn "sample.tiger"
+    val io = TextIO.openIn "ch2/sample.tiger"
     val str = ioToString (io, "")
     val _ = TextIO.closeIn io
   in
