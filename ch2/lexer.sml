@@ -1,4 +1,60 @@
-structure Lexer =
+signature LEXER =
+sig
+  datatype token =
+    INT of int
+  | ID of string
+  | STRING of string
+
+  (* reserved words *)
+  | WHILE
+  | FOR
+  | TO
+  | BREAK
+  | LET
+  | IN
+  | END
+  | FUNCTION
+  | VAR
+  | TYPE
+  | ARRAY
+  | IF
+  | THEN
+  | ELSE
+  | DO
+  | OF
+  | NIL
+
+  (* punctuation *)
+  | COMMA
+  | COLON
+  | SEMI_COLON
+  | L_PAREN
+  | R_PAREN
+  | L_BRACKET
+  | R_BRACKET
+  | L_BRACE
+  | R_BRACE
+  | DOT
+  | PLUS
+  | MINUS
+  | ASTERISK
+  | SLASH
+  | EQUALS
+  | NOT_EQUALS
+  | LESS_THAN
+  | LESS_OR_EQUAL
+  | GREATER_THAN
+  | GREATER_THAN_OR_EQUAL
+  | AMPERSAND
+  | PIPE
+  | COLON_EQUALS
+
+  | EOF
+
+  val getTokens: string -> token list
+end
+
+structure Lexer :> LEXER =
 struct
   fun areAllDead (idState, intState, punctState) =
     idState = 0 andalso intState = 0 andalso punctState = 0
@@ -78,7 +134,7 @@ struct
   fun getPunct str =
     case str of
       "," => COMMA
-    | "" => COLON
+    | ":" => COLON
     | ";" => SEMI_COLON
     | "(" => L_PAREN
     | ")" => R_PAREN
@@ -100,7 +156,7 @@ struct
     | "&" => AMPERSAND
     | "|" => PIPE
     | ":=" => COLON_EQUALS
-    | _ => raise Empty
+    | _ => (print str; raise Empty)
 
   fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
     let
@@ -208,7 +264,6 @@ struct
                 (* \ddd *)
                 let
                   val str = String.substring (str, pos, 3)
-                  val _ = print ("ddd: " ^ str ^ "\n")
                 in
                   case Int.fromString str of
                     SOME x => (pos, Char.chr x :: parsedString)
@@ -278,6 +333,9 @@ struct
 
             val lastFinalInt =
               if IntDfa.isFinal newIntState then pos else lastFinalInt
+
+            val lastFinalPunct =
+              if PunctDfa.isFinal newPunctState then pos else lastFinalPunct
           in
             helpGetTokenEndPos
               ( pos + 1
@@ -321,12 +379,13 @@ end
 
 fun ioToString (io, str) =
   case TextIO.inputLine io of
-    SOME tl => ioToString (io, str ^ tl)
+    SOME tl =>
+      ioToString (io, str ^ tl)
   | NONE => str
 
 fun main () =
   let
-    val io = TextIO.openIn "ch2/sample.tiger"
+    val io = TextIO.openIn "sample.tiger"
     val str = ioToString (io, "")
     val _ = TextIO.closeIn io
   in
