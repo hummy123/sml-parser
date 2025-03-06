@@ -116,142 +116,128 @@ struct
   structure L = Lexer
 
   (* loop over multiple equality expressions *)
-  fun helpEquality (prev, next, acc) =
+  fun helpEquality (next, acc) =
     case next of
-      L.EQUALS :: tl => startEqualityLoop (prev, tl, L.EQUALS, EQUALS, acc)
+      L.EQUALS :: tl => startEqualityLoop (tl, L.EQUALS, EQUALS, acc)
     | L.NOT_EQUALS :: tl =>
-        startEqualityLoop (prev, tl, L.NOT_EQUALS, NOT_EQUALS, acc)
-    | _ => (acc, prev, next)
+        startEqualityLoop (tl, L.NOT_EQUALS, NOT_EQUALS, acc)
+    | _ => (acc, next)
 
-  and startEqualityLoop (prev, next, lexEq, astEq, acc) =
+  and startEqualityLoop (next, lexEq, astEq, acc) =
     let
-      val prev = lexEq :: prev
-      val (rightExpr, prev, next) = comparison (prev, next)
+      val (rightExpr, next) = comparison next
       val opt = EQUALITY astEq
       val acc = BINARY (acc, opt, rightExpr)
     in
-      helpEquality (prev, next, acc)
+      helpEquality (next, acc)
     end
 
-  and equality (prev, next) =
-    let val (leftExpr, prev, next) = comparison (prev, next)
-    in helpEquality (prev, next, leftExpr)
+  and equality next =
+    let val (leftExpr, next) = comparison next
+    in helpEquality (next, leftExpr)
     end
 
-  and helpComparison (prev, next, acc) =
+  and helpComparison (next, acc) =
     case next of
       L.GREATER_THAN :: tl =>
-        startComparisonLoop (prev, tl, L.GREATER_THAN, GREATER_THAN, acc)
+        startComparisonLoop (tl, L.GREATER_THAN, GREATER_THAN, acc)
     | L.GREATER_THAN_OR_EQUAL :: tl =>
         startComparisonLoop
-          (prev, tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL, acc)
-    | L.LESS_THAN :: tl =>
-        startComparisonLoop (prev, tl, L.LESS_THAN, LESS_THAN, acc)
+          (tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL, acc)
+    | L.LESS_THAN :: tl => startComparisonLoop (tl, L.LESS_THAN, LESS_THAN, acc)
     | L.LESS_OR_EQUAL :: tl =>
-        startComparisonLoop (prev, tl, L.LESS_OR_EQUAL, LESS_THAN_EQUAL, acc)
-    | _ => (acc, prev, next)
+        startComparisonLoop (tl, L.LESS_OR_EQUAL, LESS_THAN_EQUAL, acc)
+    | _ => (acc, next)
 
-  and startComparisonLoop (prev, next, lexCmp, astCmp, acc) =
+  and startComparisonLoop (next, lexCmp, astCmp, acc) =
     let
-      val prev = lexCmp :: prev
-      val (rightExpr, prev, next) = term (prev, next)
+      val (rightExpr, next) = term next
       val opt = COMPARISON astCmp
       val acc = BINARY (acc, opt, rightExpr)
     in
-      helpComparison (prev, next, acc)
+      helpComparison (next, acc)
     end
 
-  and comparison (prev, next) =
-    let val (leftExpr, prev, next) = term (prev, next)
-    in helpComparison (prev, next, leftExpr)
+  and comparison next =
+    let val (leftExpr, next) = term next
+    in helpComparison (next, leftExpr)
     end
 
-  and helpTerm (prev, next, acc) =
+  and helpTerm (next, acc) =
     case next of
-      L.MINUS :: tl => startTermLoop (prev, tl, L.MINUS, MINUS, acc)
-    | L.PLUS :: tl => startTermLoop (prev, tl, L.PLUS, PLUS, acc)
-    | _ => (acc, prev, next)
+      L.MINUS :: tl => startTermLoop (tl, L.MINUS, MINUS, acc)
+    | L.PLUS :: tl => startTermLoop (tl, L.PLUS, PLUS, acc)
+    | _ => (acc, next)
 
-  and startTermLoop (prev, next, lexTerm, astTerm, acc) =
+  and startTermLoop (next, lexTerm, astTerm, acc) =
     let
-      val prev = lexTerm :: prev
-      val (rightExpr, prev, next) = factor (prev, next)
+      val (rightExpr, next) = factor next
       val opt = TERM astTerm
       val acc = BINARY (acc, opt, rightExpr)
     in
-      helpTerm (prev, next, acc)
+      helpTerm (next, acc)
     end
 
-  and term (prev, next) =
-    let val (leftExpr, prev, next) = factor (prev, next)
-    in helpTerm (prev, next, leftExpr)
+  and term next =
+    let val (leftExpr, next) = factor next
+    in helpTerm (next, leftExpr)
     end
 
-  and helpFactor (prev, next, acc) =
+  and helpFactor (next, acc) =
     case next of
-      L.SLASH :: tl => startFactorLoop (prev, tl, L.SLASH, DIV, acc)
-    | L.ASTERISK :: tl => startFactorLoop (prev, tl, L.ASTERISK, TIMES, acc)
-    | _ => (acc, prev, next)
+      L.SLASH :: tl => startFactorLoop (tl, L.SLASH, DIV, acc)
+    | L.ASTERISK :: tl => startFactorLoop (tl, L.ASTERISK, TIMES, acc)
+    | _ => (acc, next)
 
-  and startFactorLoop (prev, next, lexFct, astFct, acc) =
+  and startFactorLoop (next, lexFct, astFct, acc) =
     let
-      val prev = lexFct :: prev
-      val (rightExpr, prev, next) = unary (prev, next)
+      val (rightExpr, next) = unary next
       val opt = FACTOR astFct
       val acc = BINARY (acc, opt, rightExpr)
     in
-      helpFactor (prev, next, acc)
+      helpFactor (next, acc)
     end
 
-  and factor (prev, next) =
-    let val (leftExpr, prev, next) = unary (prev, next)
-    in helpFactor (prev, next, leftExpr)
+  and factor next =
+    let val (leftExpr, next) = unary next
+    in helpFactor (next, leftExpr)
     end
 
-  and unary (prev, next) =
+  and unary next =
     case next of
       L.MINUS :: tl =>
         let
-          val prev = L.MINUS :: prev
-          val (right, prev, next) = unary (prev, tl)
+          val (right, next) = unary tl
           val result = UNARY (NEGATE_INT, right)
         in
-          (result, prev, next)
+          (result, next)
         end
-    | _ => primary (prev, next)
+    | _ => primary next
 
-  and advancePastRParen (expr, prev, next) =
+  and advancePastRParen (expr, next) =
     case next of
-      L.R_PAREN :: tl =>
-        let val prev = L.R_PAREN :: prev
-        in (expr, prev, tl)
-        end
+      L.R_PAREN :: tl => (expr, tl)
     | _ => (print "expected rParen but got something else\n"; raise Size)
 
-  and primary (prev, next) =
+  and primary next =
     case next of
       L.INT num :: tl =>
         let
-          val prev = L.INT num :: prev
           val result = INT_LITERAL num
           val result = LITERAL result
         in
-          (result, prev, tl)
+          (result, tl)
         end
     | L.STRING str :: tl =>
         let
-          val prev = L.STRING str :: prev
           val result = STRING_LITERAL str
           val result = LITERAL result
         in
-          (result, prev, tl)
+          (result, tl)
         end
     | L.L_PAREN :: tl =>
-        let
-          val prev = L.L_PAREN :: prev
-          val (expr, prev, next) = equality (prev, tl)
-        in
-          advancePastRParen (expr, prev, next)
+        let val (expr, next) = equality tl
+        in advancePastRParen (expr, next)
         end
     | [] => (print "empty on primary\n"; raise Size)
     | _ => (print "unmatched on primary\n"; raise Size)
@@ -317,7 +303,7 @@ struct
     | _ => (print "85 unexpected"; raise Size)
 
   fun parse lst =
-    let val (tree, _, _) = equality ([], lst)
+    let val (tree, _) = equality lst
     in tree
     end
 end
