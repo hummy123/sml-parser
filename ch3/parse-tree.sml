@@ -29,17 +29,70 @@ struct
 
   datatype unary = NEGATE_INT
 
-  datatype expr =
-    LITERAL of literal
+  datatype operator =
+    TERM of term
+  | FACTOR of factor
   | COMPARISON of comparison
   | EQUALITY of equality
 
-  datatype operator = TERM of term | FACTOR of factor
+  datatype expr =
+    LITERAL of literal
+  | UNARY of unary * expr
+  | BINARY of expr * operator * expr
 
-  datatype parse_tree =
-    BINARY of expr * operator * expr
-  | UNARY of operator * expr
-  | LITERAL of literal
+  fun literalToString lit =
+    case lit of
+      INT_LITERAL num => String.concat ["INT_LITERAL(", Int.toString num, ")"]
+    | STRING_LITERAL str => String.concat ["STRING_LITERAL(", str, ")"]
+
+  fun comparisonToString cmp =
+    case cmp of
+      LESS_THAN => "<"
+    | LESS_THAN_EQUAL => "<="
+    | GREATER_THAN => ">"
+    | GREATER_THAN_EQUAL => ">="
+
+  fun equalityToString eq =
+    case eq of
+      EQUALS => "="
+    | NOT_EQUALS => "<>"
+
+  fun termToString term =
+    case term of
+      PLUS => "+"
+    | MINUS => "-"
+
+  fun factorToString fct =
+    case fct of
+      TIMES => "*"
+    | DIV => "/"
+
+  fun operatorToString opt =
+    case opt of
+      TERM term => termToString term
+    | FACTOR fct => factorToString fct
+    | COMPARISON cmp => comparisonToString cmp
+    | EQUALITY eq => equalityToString eq
+
+  fun unaryToString unary =
+    case unary of NEGATE_INT => "~"
+
+  fun exprToString (exp: expr) =
+    case exp of
+      LITERAL l => literalToString l
+    | BINARY (l, opt, r) =>
+        String.concat
+          [ " ( "
+          , exprToString l
+          , " "
+          , operatorToString opt
+          , " "
+          , exprToString r
+          , " ) "
+          ]
+    | UNARY (unary, expr) =>
+        String.concat
+          [" ( ", unaryToString unary, " ", exprToString expr, " ) "]
 
   datatype ty_env_value =
     TYPE_ALIAS of string
@@ -72,9 +125,10 @@ struct
 
   and startEqualityLoop (prev, next, lexEq, astEq, acc) =
     let
-      val prev = leqEq :: prev
+      val prev = lexEq :: prev
       val (rightExpr, prev, next) = comparison (prev, next)
-      val acc = BINARY (acc, astEq, rightExpr)
+      val opt = EQUALITY astEq
+      val acc = BINARY (acc, opt, rightExpr)
     in
       helpEquality (prev, next, acc)
     end
@@ -93,16 +147,16 @@ struct
           (prev, tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL, acc)
     | L.LESS_THAN :: tl =>
         startComparisonLoop (prev, tl, L.LESS_THAN, LESS_THAN, acc)
-    | L.LESS_THAN_OR_EQUAL :: tl =>
-        startComparisonLoop
-          (prev, tl, L.LESS_THAN_OR_EQUAL, LESS_THAN_EQUAL, acc)
+    | L.LESS_OR_EQUAL :: tl =>
+        startComparisonLoop (prev, tl, L.LESS_OR_EQUAL, LESS_THAN_EQUAL, acc)
     | _ => (acc, prev, next)
 
   and startComparisonLoop (prev, next, lexCmp, astCmp, acc) =
     let
       val prev = lexCmp :: prev
       val (rightExpr, prev, next) = term (prev, next)
-      val acc = BINARY (acc, astCmp, rightExpr)
+      val opt = COMPARISON astCmp
+      val acc = BINARY (acc, opt, rightExpr)
     in
       helpComparison (prev, next, acc)
     end
@@ -122,7 +176,8 @@ struct
     let
       val prev = lexTerm :: prev
       val (rightExpr, prev, next) = factor (prev, next)
-      val acc = BINARY (acc, astTerm, rightExpr)
+      val opt = TERM astTerm
+      val acc = BINARY (acc, opt, rightExpr)
     in
       helpTerm (prev, next, acc)
     end
@@ -142,7 +197,8 @@ struct
     let
       val prev = lexFct :: prev
       val (rightExpr, prev, next) = unary (prev, next)
-      val acc = BINARY (acc, astFct, rightExpr)
+      val opt = FACTOR astFct
+      val acc = BINARY (acc, opt, rightExpr)
     in
       helpFactor (prev, next, acc)
     end
@@ -151,6 +207,54 @@ struct
     let val (leftExpr, prev, next) = unary (prev, next)
     in helpFactor (prev, next, leftExpr)
     end
+
+  and unary (prev, next) =
+    case next of
+      L.MINUS :: tl =>
+        let
+          val prev = L.MINUS :: prev
+          val (right, prev, next) = unary (prev, tl)
+          val result = UNARY (NEGATE_INT, right)
+        in
+          (result, prev, next)
+        end
+    | _ => primary (prev, next)
+
+  and advancePastRParen (expr, prev, next) =
+    case next of
+      L.R_PAREN :: tl =>
+        let val prev = L.R_PAREN :: prev
+        in (expr, prev, tl)
+        end
+    | _ => (print "expected rParen but got something else\n"; raise Size)
+
+  and primary (prev, next) =
+    case next of
+      L.INT num :: tl =>
+        let
+          val prev = L.INT num :: prev
+          val result = INT_LITERAL num
+          val result = LITERAL result
+        in
+          (result, prev, tl)
+        end
+    | L.STRING str :: tl =>
+        let
+          val prev = L.STRING str :: prev
+          val result = STRING_LITERAL str
+          val result = LITERAL result
+        in
+          (result, prev, tl)
+        end
+    | L.L_PAREN :: tl =>
+        let
+          val prev = L.L_PAREN :: prev
+          val (expr, prev, next) = equality (prev, next)
+        in
+          advancePastRParen (expr, prev, next)
+        end
+    | [] => (print "empty on primary\n"; raise Size)
+    | _ => (print "unmatched on primary\n"; raise Size)
 
   fun ty (prev, next, fieldMap, typeName, tyEnv) =
     case next of
@@ -173,7 +277,7 @@ struct
                (* terminate type *)
                let
                  val prev =
-                   L.R_BRACE :: L.ID typeID :: L.COLON :: L.fieldName :: prev
+                   L.R_BRACE :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
                in
                  (prev, tl, TyEnv.add (typeName, TYPE_DEC fieldMap, tyEnv))
                end
@@ -212,18 +316,30 @@ struct
         end
     | _ => (print "85 unexpected"; raise Size)
 
-  fun helpTok (prev, next, tyEnv) =
-    case next of
-      L.TYPE :: tl =>
-        let
-          val (prev, tl, tyEnv) = typ (tl, tyEnv)
-          val prev = L.TYPE :: prev
-        in
-          helpTok (prev, tl, tyEnv)
-        end
-    | L.EQUALS :: tl => equality (L.EQUALS :: prev, tl, L.EQUALS)
-    | [L.EOF] => tyEnv
-    | _ => (print "90 unexpected"; raise Size)
-
-  fun tok lst = helpTok (lst, TyEnv.empty)
+  fun parse lst =
+    let val (tree, _, _) = equality ([], lst)
+    in tree
+    end
 end
+
+fun ioToString (io, str) =
+  case TextIO.inputLine io of
+    SOME tl => ioToString (io, str ^ tl)
+  | NONE => str
+
+fun main () =
+  let
+    val io = TextIO.openIn "ch2/sample.tiger"
+    val str = ioToString (io, "")
+    val _ = TextIO.closeIn io
+    val tokens = Lexer.getTokens str
+
+    val _ = print "before parse\n"
+    val parseTree = ParseTree.parse tokens
+    val str = ParseTree.exprToString parseTree
+    val _ = print "after parse\n"
+  in
+    print str
+  end
+
+val _ = main ()

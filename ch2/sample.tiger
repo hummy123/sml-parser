@@ -1,8 +1,1 @@
-type person = {
-  name: string,
-  age: int
-}
-
-type human = person
-
-type people = array of person
+1 + 1
