@@ -63,70 +63,93 @@ struct
   structure L = Lexer
 
   (* loop over multiple equality expressions *)
-  fun helpEquality (prev, next, leftExpr) =
+  fun helpEquality (prev, next, acc) =
     case next of
-      L.EQUALS :: tl =>
-        let
-          val prev = L.EQUALS :: prev
-          val (rightExpr, prev, next) = comparison (prev, next)
-          val acc = BINARY (leftExpr, EQUALS, rightExpr)
-        in
-          helpEquality (prev, next, acc)
-        end
+      L.EQUALS :: tl => startEqualityLoop (prev, tl, L.EQUALS, EQUALS, acc)
     | L.NOT_EQUALS :: tl =>
-        let
-          val prev = L.NOT_EQUALS :: prev
-          val (rightExpr, prev, next) = comparison (prev, next)
-          val acc = BINARY (leftExpr, NOT_EQUALS, rightExpr)
-        in
-          helpEquality (prev, next, acc)
-        end
-    | _ => (leftExpr, prev, next)
+        startEqualityLoop (prev, tl, L.NOT_EQUALS, NOT_EQUALS, acc)
+    | _ => (acc, prev, next)
 
-  and startEqualityLoop (prev, next, lexEq, astEq) =
+  and startEqualityLoop (prev, next, lexEq, astEq, acc) =
     let
       val prev = leqEq :: prev
       val (rightExpr, prev, next) = comparison (prev, next)
-      val acc = BINARY (leftExpr, astEq, rightExpr)
+      val acc = BINARY (acc, astEq, rightExpr)
     in
       helpEquality (prev, next, acc)
     end
 
   and equality (prev, next) =
-    let
-      val (leftExpr, prev, next) = comparison (prev, next)
-    in
-      case next of
-        L.EQUALS :: tl => startEqualityLoop (prev, next, L.EQUALS, EQUALS)
-      | L.NOT_EQUALS :: tl =>
-          startEqualityLoop (prev, next, L.NOT_EQUALS, NOT_EQUALS)
-      | _ => (leftExpr, prev, next)
+    let val (leftExpr, prev, next) = comparison (prev, next)
+    in helpEquality (prev, next, leftExpr)
     end
 
-  and startComparisonLoop (prev, next, lexCmp, astCmp) =
+  and helpComparison (prev, next, acc) =
+    case next of
+      L.GREATER_THAN :: tl =>
+        startComparisonLoop (prev, tl, L.GREATER_THAN, GREATER_THAN, acc)
+    | L.GREATER_THAN_OR_EQUAL :: tl =>
+        startComparisonLoop
+          (prev, tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL, acc)
+    | L.LESS_THAN :: tl =>
+        startComparisonLoop (prev, tl, L.LESS_THAN, LESS_THAN, acc)
+    | L.LESS_THAN_OR_EQUAL :: tl =>
+        startComparisonLoop
+          (prev, tl, L.LESS_THAN_OR_EQUAL, LESS_THAN_EQUAL, acc)
+    | _ => (acc, prev, next)
+
+  and startComparisonLoop (prev, next, lexCmp, astCmp, acc) =
     let
       val prev = lexCmp :: prev
-      val rightExpr = term (prev, next)
-      val acc = BINARY (leftExpr, astCmp, rightExpr)
+      val (rightExpr, prev, next) = term (prev, next)
+      val acc = BINARY (acc, astCmp, rightExpr)
     in
       helpComparison (prev, next, acc)
     end
 
   and comparison (prev, next) =
+    let val (leftExpr, prev, next) = term (prev, next)
+    in helpComparison (prev, next, leftExpr)
+    end
+
+  and helpTerm (prev, next, acc) =
+    case next of
+      L.MINUS :: tl => startTermLoop (prev, tl, L.MINUS, MINUS, acc)
+    | L.PLUS :: tl => startTermLoop (prev, tl, L.PLUS, PLUS, acc)
+    | _ => (acc, prev, next)
+
+  and startTermLoop (prev, next, lexTerm, astTerm, acc) =
     let
-      val leftExpr = term (prev, next)
+      val prev = lexTerm :: prev
+      val (rightExpr, prev, next) = factor (prev, next)
+      val acc = BINARY (acc, astTerm, rightExpr)
     in
-      case next of
-        L.GREATER_THAN :: tl =>
-          startComparisonLoop (prev, tl, L.GREATER_THAN, GREATER_THAN)
-      | L.GREATER_THAN_OR_EQUAL :: tl =>
-          startComparisonLoop
-            (prev, tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL)
-      | L.LESS_THAN :: tl =>
-          startComparisonLoop (prev, tl, L.LESS_THAN, LESS_THAN)
-      | L.LESS_THAN_OR_EQUAL :: tl =>
-          startComparisonLoop (prev, tl, L.LESS_THAN_OR_EQUAL, LESS_THAN_EQUAL)
-      | _ => (leftExpr, prev, next)
+      helpTerm (prev, next, acc)
+    end
+
+  and term (prev, next) =
+    let val (leftExpr, prev, next) = factor (prev, next)
+    in helpTerm (prev, next, leftExpr)
+    end
+
+  and helpFactor (prev, next, acc) =
+    case next of
+      L.SLASH :: tl => startFactorLoop (prev, tl, L.SLASH, DIV, acc)
+    | L.ASTERISK :: tl => startFactorLoop (prev, tl, L.ASTERISK, TIMES, acc)
+    | _ => (acc, prev, next)
+
+  and startFactorLoop (prev, next, lexFct, astFct, acc) =
+    let
+      val prev = lexFct :: prev
+      val (rightExpr, prev, next) = unary (prev, next)
+      val acc = BINARY (acc, astFct, rightExpr)
+    in
+      helpFactor (prev, next, acc)
+    end
+
+  and factor (prev, next) =
+    let val (leftExpr, prev, next) = unary (prev, next)
+    in helpFactor (prev, next, leftExpr)
     end
 
   fun ty (prev, next, fieldMap, typeName, tyEnv) =
