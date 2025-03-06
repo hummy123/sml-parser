@@ -13,6 +13,28 @@ struct
          val maxNodeSize = 8
        end)
 
+  datatype ty_env_value =
+    TYPE_ALIAS of string
+  | TYPE_DEC of FieldMap.t
+  | ARRAY_DEC of string
+
+  structure TyEnv =
+    MakeGapMap
+      (struct
+         (* key = user-given name to type.
+          * There may be multiple types of the same name, 
+          * one declared after another.
+          * In that case, the old type is shadowed. *)
+         type key = string
+         type value = ty_env_value
+
+         fun l (s1: string, s2) = s1 < s2
+         fun eq (s1: string, s2) = s1 = s2
+         fun g (s1: string, s2) = s1 > s2
+
+         val maxNodeSize = 8
+       end)
+
   datatype literal = INT_LITERAL of int | STRING_LITERAL of string
 
   datatype comparison =
@@ -93,25 +115,6 @@ struct
     | UNARY (unary, expr) =>
         String.concat
           [" ( ", unaryToString unary, " ", exprToString expr, " ) "]
-
-  datatype ty_env_value =
-    TYPE_ALIAS of string
-  | TYPE_DEC of FieldMap.t
-  | ARRAY_DEC of string
-
-  structure TyEnv =
-    MakeGapMap
-      (struct
-         (* phrase number? *)
-         type key = string
-         type value = ty_env_value
-
-         fun l (s1: string, s2) = s1 < s2
-         fun eq (s1: string, s2) = s1 = s2
-         fun g (s1: string, s2) = s1 > s2
-
-         val maxNodeSize = 8
-       end)
 
   structure L = Lexer
 
