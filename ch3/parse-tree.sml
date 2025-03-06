@@ -13,36 +13,38 @@ struct
          val maxNodeSize = 8
        end)
 
-  datatype expr =
-    LITERAL of literal
-  | COMPARISON of comparison
-  | EQUALITY of equality
+  datatype literal = INT_LITERAL of int | STRING_LITERAL of string
 
-  and literal =
-    INT_LITERAL of int
-  | STRING_LITERAL of string
-  | WITH_PARENS of expr
-
-  and comparison =
+  datatype comparison =
     LESS_THAN
   | LESS_THAN_EQUAL
   | GREATER_THAN
   | GREATER_THAN_EQUAL
 
-  and equality =
-    EQUALS
-  | NOT_EQUALS
-
-  datatype ty_env_value =
-    TYPE_ALIAS of string
-  | TYPE_DEC of FieldMap.t
-  | ARRAY_DEC of string
+  datatype equality = EQUALS | NOT_EQUALS
 
   datatype term = PLUS | MINUS
 
   datatype factor = DIV | TIMES
 
-  datatype unary = NEGATE
+  datatype unary = NEGATE_INT
+
+  datatype expr =
+    LITERAL of literal
+  | COMPARISON of comparison
+  | EQUALITY of equality
+
+  datatype operator = TERM of term | FACTOR of factor
+
+  datatype parse_tree =
+    BINARY of expr * operator * expr
+  | UNARY of operator * expr
+  | LITERAL of literal
+
+  datatype ty_env_value =
+    TYPE_ALIAS of string
+  | TYPE_DEC of FieldMap.t
+  | ARRAY_DEC of string
 
   structure TyEnv =
     MakeGapMap
@@ -58,12 +60,77 @@ struct
          val maxNodeSize = 8
        end)
 
-  datatype parse_tree = TYPE_ID of string
-
   structure L = Lexer
 
-  fun ty (tl, fieldMap, typeName, tyEnv) =
-    case tl of
+  (* loop over multiple equality expressions *)
+  fun helpEquality (prev, next, leftExpr) =
+    case next of
+      L.EQUALS :: tl =>
+        let
+          val prev = L.EQUALS :: prev
+          val (rightExpr, prev, next) = comparison (prev, next)
+          val acc = BINARY (leftExpr, EQUALS, rightExpr)
+        in
+          helpEquality (prev, next, acc)
+        end
+    | L.NOT_EQUALS :: tl =>
+        let
+          val prev = L.NOT_EQUALS :: prev
+          val (rightExpr, prev, next) = comparison (prev, next)
+          val acc = BINARY (leftExpr, NOT_EQUALS, rightExpr)
+        in
+          helpEquality (prev, next, acc)
+        end
+    | _ => (leftExpr, prev, next)
+
+  and startEqualityLoop (prev, next, lexEq, astEq) =
+    let
+      val prev = leqEq :: prev
+      val (rightExpr, prev, next) = comparison (prev, next)
+      val acc = BINARY (leftExpr, astEq, rightExpr)
+    in
+      helpEquality (prev, next, acc)
+    end
+
+  and equality (prev, next) =
+    let
+      val (leftExpr, prev, next) = comparison (prev, next)
+    in
+      case next of
+        L.EQUALS :: tl => startEqualityLoop (prev, next, L.EQUALS, EQUALS)
+      | L.NOT_EQUALS :: tl =>
+          startEqualityLoop (prev, next, L.NOT_EQUALS, NOT_EQUALS)
+      | _ => (leftExpr, prev, next)
+    end
+
+  and startComparisonLoop (prev, next, lexCmp, astCmp) =
+    let
+      val prev = lexCmp :: prev
+      val rightExpr = term (prev, next)
+      val acc = BINARY (leftExpr, astCmp, rightExpr)
+    in
+      helpComparison (prev, next, acc)
+    end
+
+  and comparison (prev, next) =
+    let
+      val leftExpr = term (prev, next)
+    in
+      case next of
+        L.GREATER_THAN :: tl =>
+          startComparisonLoop (prev, tl, L.GREATER_THAN, GREATER_THAN)
+      | L.GREATER_THAN_OR_EQUAL :: tl =>
+          startComparisonLoop
+            (prev, tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL)
+      | L.LESS_THAN :: tl =>
+          startComparisonLoop (prev, tl, L.LESS_THAN, LESS_THAN)
+      | L.LESS_THAN_OR_EQUAL :: tl =>
+          startComparisonLoop (prev, tl, L.LESS_THAN_OR_EQUAL, LESS_THAN_EQUAL)
+      | _ => (leftExpr, prev, next)
+    end
+
+  fun ty (prev, next, fieldMap, typeName, tyEnv) =
+    case next of
       L.ID fieldName :: L.COLON :: L.ID typeID :: tl =>
         (* add field to map *)
         let
@@ -72,12 +139,21 @@ struct
           (case tl of
              L.COMMA :: tl =>
                (* continue to parse type *)
-               let val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
-               in ty (tl, fieldMap, typeName, tyEnv)
+               let
+                 val prev =
+                   L.COMMA :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
+                 val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
+               in
+                 ty (prev, tl, fieldMap, typeName, tyEnv)
                end
            | L.R_BRACE :: tl =>
                (* terminate type *)
-               (tl, TyEnv.add (typeName, TYPE_DEC fieldMap, tyEnv))
+               let
+                 val prev =
+                   L.R_BRACE :: L.ID typeID :: L.COLON :: L.fieldName :: prev
+               in
+                 (prev, tl, TyEnv.add (typeName, TYPE_DEC fieldMap, tyEnv))
+               end
            | hd :: _ =>
                let val _ = print "expected , or } but found something else\n"
                in raise Size
@@ -122,7 +198,8 @@ struct
         in
           helpTok (prev, tl, tyEnv)
         end
-    | [EOF] => tyEnv
+    | L.EQUALS :: tl => equality (L.EQUALS :: prev, tl, L.EQUALS)
+    | [L.EOF] => tyEnv
     | _ => (print "90 unexpected"; raise Size)
 
   fun tok lst = helpTok (lst, TyEnv.empty)
