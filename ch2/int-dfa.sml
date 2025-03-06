@@ -7,14 +7,11 @@ struct
   fun mkDead _ = dead
 
   fun mkStart i =
-    if Char.isDigit (Char.chr i) then start else dead
-
-  fun mkFinal i =
     if Char.isDigit (Char.chr i) then final else dead
 
   val deadTable = Vector.tabulate (255, mkDead)
   val startTable = Vector.tabulate (255, mkStart)
-  val finalTable = Vector.tabulate (255, mkFinal)
+  val finalTable = startTable
 
   val states = vector [deadTable, startTable, finalTable]
 
