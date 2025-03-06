@@ -249,7 +249,7 @@ struct
     | L.L_PAREN :: tl =>
         let
           val prev = L.L_PAREN :: prev
-          val (expr, prev, next) = equality (prev, next)
+          val (expr, prev, next) = equality (prev, tl)
         in
           advancePastRParen (expr, prev, next)
         end
@@ -329,7 +329,7 @@ fun ioToString (io, str) =
 
 fun main () =
   let
-    val io = TextIO.openIn "ch2/sample.tiger"
+    val io = TextIO.openIn "../ch2/sample.tiger"
     val str = ioToString (io, "")
     val _ = TextIO.closeIn io
     val tokens = Lexer.getTokens str
