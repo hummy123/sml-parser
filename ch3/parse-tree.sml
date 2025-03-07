@@ -35,215 +35,113 @@ struct
          val maxNodeSize = 8
        end)
 
-  datatype literal = INT_LITERAL of int | STRING_LITERAL of string
+  datatype literal = INT_LITERAL of int
 
-  datatype comparison =
-    LESS_THAN
-  | LESS_THAN_EQUAL
-  | GREATER_THAN
-  | GREATER_THAN_EQUAL
+  datatype opt =
+  (* highest precedence *)
+    TIMES
+  | DIV
 
-  datatype equality = EQUALS | NOT_EQUALS
+  | PLUS
+  | MINUS
 
-  datatype term = PLUS | MINUS
+  | LEQ
+  | GEQ
+  | LE
+  | GE
 
-  datatype factor = DIV | TIMES
+  (* lowest precedence *)
+  | ANDALSO
+  | ORELSE
 
-  datatype unary = NEGATE_INT
-
-  datatype operator =
-    TERM of term
-  | FACTOR of factor
-  | COMPARISON of comparison
-  | EQUALITY of equality
-
-  datatype expr =
-    LITERAL of literal
-  | UNARY of unary * expr
-  | BINARY of expr * operator * expr
-
-  fun literalToString lit =
-    case lit of
-      INT_LITERAL num => String.concat ["INT_LITERAL(", Int.toString num, ")"]
-    | STRING_LITERAL str => String.concat ["STRING_LITERAL(", str, ")"]
-
-  fun comparisonToString cmp =
-    case cmp of
-      LESS_THAN => "<"
-    | LESS_THAN_EQUAL => "<="
-    | GREATER_THAN => ">"
-    | GREATER_THAN_EQUAL => ">="
-
-  fun equalityToString eq =
-    case eq of
-      EQUALS => "="
-    | NOT_EQUALS => "<>"
-
-  fun termToString term =
-    case term of
-      PLUS => "+"
-    | MINUS => "-"
-
-  fun factorToString fct =
-    case fct of
-      TIMES => "*"
-    | DIV => "/"
-
-  fun operatorToString opt =
-    case opt of
-      TERM term => termToString term
-    | FACTOR fct => factorToString fct
-    | COMPARISON cmp => comparisonToString cmp
-    | EQUALITY eq => equalityToString eq
-
-  fun unaryToString unary =
-    case unary of NEGATE_INT => "~"
-
-  fun exprToString (exp: expr) =
-    case exp of
-      LITERAL l => literalToString l
-    | BINARY (l, opt, r) =>
-        String.concat
-          [ " ( "
-          , exprToString l
-          , " "
-          , operatorToString opt
-          , " "
-          , exprToString r
-          , " ) "
-          ]
-    | UNARY (unary, expr) =>
-        String.concat
-          [" ( ", unaryToString unary, " ", exprToString expr, " ) "]
+  datatype exp = LITERAL of literal | BINARY of exp * opt * exp
 
   structure L = Lexer
 
-  (* loop over multiple equality expressions *)
-  fun helpEquality (next, acc) =
-    case next of
-      L.EQUALS :: tl => startEqualityLoop (tl, L.EQUALS, EQUALS, acc)
-    | L.NOT_EQUALS :: tl =>
-        startEqualityLoop (tl, L.NOT_EQUALS, NOT_EQUALS, acc)
-    | _ => (acc, next)
-
-  and startEqualityLoop (next, lexEq, astEq, acc) =
+  fun parseIf (expr, next) =
     let
-      val (rightExpr, next) = comparison next
-      val opt = EQUALITY astEq
-      val acc = BINARY (acc, opt, rightExpr)
+      val (expr, next) = term (expr, next)
     in
-      helpEquality (next, acc)
+      case next of
+        L.AMPERSAND :: tl =>
+          let
+            val (rightExpr, next) = term (expr, tl)
+            val result = BINARY (expr, ANDALSO, rightExpr)
+          in
+            parseIf (result, next)
+          end
+      | L.PIPE :: tl =>
+          let
+            val (rightExpr, next) = term (expr, tl)
+            val result = BINARY (expr, ORELSE, rightExpr)
+          in
+            parseIf (result, next)
+          end
+      | _ => (expr, next)
     end
 
-  and equality next =
-    let val (leftExpr, next) = comparison next
-    in helpEquality (next, leftExpr)
-    end
-
-  and helpComparison (next, acc) =
-    case next of
-      L.GREATER_THAN :: tl =>
-        startComparisonLoop (tl, L.GREATER_THAN, GREATER_THAN, acc)
-    | L.GREATER_THAN_OR_EQUAL :: tl =>
-        startComparisonLoop
-          (tl, L.GREATER_THAN_OR_EQUAL, GREATER_THAN_EQUAL, acc)
-    | L.LESS_THAN :: tl => startComparisonLoop (tl, L.LESS_THAN, LESS_THAN, acc)
-    | L.LESS_OR_EQUAL :: tl =>
-        startComparisonLoop (tl, L.LESS_OR_EQUAL, LESS_THAN_EQUAL, acc)
-    | _ => (acc, next)
-
-  and startComparisonLoop (next, lexCmp, astCmp, acc) =
+  and term (expr, next) =
     let
-      val (rightExpr, next) = term next
-      val opt = COMPARISON astCmp
-      val acc = BINARY (acc, opt, rightExpr)
+      val (expr, next) = factor (expr, next)
     in
-      helpComparison (next, acc)
+      case next of
+        L.MINUS :: tl =>
+          let
+            val (rightExpr, next) = factor (expr, tl)
+            val result = BINARY (expr, MINUS, rightExpr)
+          in
+            term (result, next)
+          end
+      | L.PLUS :: tl =>
+          let
+            val (rightExpr, next) = factor (expr, tl)
+            val result = BINARY (expr, PLUS, rightExpr)
+          in
+            term (result, next)
+          end
+      | _ => (expr, next)
     end
 
-  and comparison next =
-    let val (leftExpr, next) = term next
-    in helpComparison (next, leftExpr)
-    end
-
-  and helpTerm (next, acc) =
-    case next of
-      L.MINUS :: tl => startTermLoop (tl, L.MINUS, MINUS, acc)
-    | L.PLUS :: tl => startTermLoop (tl, L.PLUS, PLUS, acc)
-    | _ => (acc, next)
-
-  and startTermLoop (next, lexTerm, astTerm, acc) =
+  and factor (expr, next) =
     let
-      val (rightExpr, next) = factor next
-      val opt = TERM astTerm
-      val acc = BINARY (acc, opt, rightExpr)
+      val (expr, next) = primary (expr, next)
     in
-      helpTerm (next, acc)
+      case next of
+        L.ASTERISK :: tl =>
+          let
+            val (rightExpr, next) = primary (expr, tl)
+            val result = BINARY (expr, TIMES, rightExpr)
+          in
+            factor (result, next)
+          end
+      | L.SLASH :: tl =>
+          let
+            val (rightExpr, next) = primary (expr, tl)
+            val result = BINARY (expr, DIV, rightExpr)
+          in
+            factor (result, next)
+          end
+      | _ => (expr, next)
     end
 
-  and term next =
-    let val (leftExpr, next) = factor next
-    in helpTerm (next, leftExpr)
-    end
-
-  and helpFactor (next, acc) =
+  and primary (expr, next) =
     case next of
-      L.SLASH :: tl => startFactorLoop (tl, L.SLASH, DIV, acc)
-    | L.ASTERISK :: tl => startFactorLoop (tl, L.ASTERISK, TIMES, acc)
-    | _ => (acc, next)
-
-  and startFactorLoop (next, lexFct, astFct, acc) =
-    let
-      val (rightExpr, next) = unary next
-      val opt = FACTOR astFct
-      val acc = BINARY (acc, opt, rightExpr)
-    in
-      helpFactor (next, acc)
-    end
-
-  and factor next =
-    let val (leftExpr, next) = unary next
-    in helpFactor (next, leftExpr)
-    end
-
-  and unary next =
-    case next of
-      L.MINUS :: tl =>
-        let
-          val (right, next) = unary tl
-          val result = UNARY (NEGATE_INT, right)
-        in
-          (result, next)
+      L.INT num :: tl =>
+        let val literal = INT_LITERAL num
+        in (LITERAL literal, tl)
         end
-    | _ => primary next
+    | _ => (expr, next)
 
-  and advancePastRParen (expr, next) =
-    case next of
-      L.R_PAREN :: tl => (expr, tl)
-    | _ => (print "expected rParen but got something else\n"; raise Size)
-
-  and primary next =
+  and expression next =
     case next of
       L.INT num :: tl =>
         let
-          val result = INT_LITERAL num
-          val result = LITERAL result
+          val literal = INT_LITERAL num
+          val literal = LITERAL literal
         in
-          (result, tl)
+          parseIf (literal, tl)
         end
-    | L.STRING str :: tl =>
-        let
-          val result = STRING_LITERAL str
-          val result = LITERAL result
-        in
-          (result, tl)
-        end
-    | L.L_PAREN :: tl =>
-        let val (expr, next) = equality tl
-        in advancePastRParen (expr, next)
-        end
-    | [] => (print "empty on primary\n"; raise Size)
-    | _ => (print "unmatched on primary\n"; raise Size)
+    | _ => raise Size
 
   fun ty (prev, next, fieldMap, typeName, tyEnv) =
     case next of
@@ -306,7 +204,7 @@ struct
     | _ => (print "85 unexpected"; raise Size)
 
   fun parse lst =
-    let val (tree, _) = equality lst
+    let val (tree, _) = expression lst
     in tree
     end
 end
@@ -325,10 +223,9 @@ fun main () =
 
     val _ = print "before parse\n"
     val parseTree = ParseTree.parse tokens
-    val str = ParseTree.exprToString parseTree
     val _ = print "after parse\n"
   in
-    print str
+    parseTree
   end
 
 val _ = main ()
