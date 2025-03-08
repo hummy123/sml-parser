@@ -54,7 +54,7 @@ struct
   | ANDALSO
   | ORELSE
 
-  datatype exp = LITERAL of literal | BINARY of exp * opt * exp
+  datatype exp = LITERAL of literal | BINARY of exp * opt * exp | GROUP of exp
 
   structure L = Lexer
 
@@ -67,6 +67,19 @@ struct
     | L.STRING str :: tl =>
         let val literal = STRING_LITERAL str
         in (LITERAL literal, tl)
+        end
+    | L.L_PAREN :: tl =>
+        let
+          val (expr, next) = primary (expr, tl)
+          val next =
+            case next of
+              L.R_PAREN :: tl => tl
+            | _ =>
+                ( print "expected L_PAREN to be followed by R_PAREN\n"
+                ; raise Size
+                )
+        in
+          (GROUP expr, next)
         end
     | _ => (expr, next)
 
@@ -152,6 +165,19 @@ struct
           val literal = LITERAL literal
         in
           parseIf (literal, tl)
+        end
+    | L.L_PAREN :: tl =>
+        let
+          val (expr, next) = expression tl
+          val next =
+            case next of
+              L.R_PAREN :: tl => tl
+            | _ =>
+                ( print "expected L_PAREN to be followed by R_PAREN\n"
+                ; raise Size
+                )
+        in
+          (GROUP expr, next)
         end
     | _ => raise Size
 
