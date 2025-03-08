@@ -35,7 +35,7 @@ struct
          val maxNodeSize = 8
        end)
 
-  datatype literal = INT_LITERAL of int
+  datatype literal = INT_LITERAL of int | STRING_LITERAL of string
 
   datatype opt =
   (* highest precedence *)
@@ -62,6 +62,10 @@ struct
     case next of
       L.INT num :: tl =>
         let val literal = INT_LITERAL num
+        in (LITERAL literal, tl)
+        end
+    | L.STRING str :: tl =>
+        let val literal = STRING_LITERAL str
         in (LITERAL literal, tl)
         end
     | _ => (expr, next)
@@ -138,6 +142,13 @@ struct
       L.INT num :: tl =>
         let
           val literal = INT_LITERAL num
+          val literal = LITERAL literal
+        in
+          parseIf (literal, tl)
+        end
+    | L.STRING str :: tl =>
+        let
+          val literal = STRING_LITERAL str
           val literal = LITERAL literal
         in
           parseIf (literal, tl)
