@@ -58,6 +58,58 @@ struct
 
   structure L = Lexer
 
+  fun primary (expr, next) =
+    case next of
+      L.INT num :: tl =>
+        let val literal = INT_LITERAL num
+        in (LITERAL literal, tl)
+        end
+    | _ => (expr, next)
+
+  fun factor (expr, next) =
+    let
+      val (expr, next) = primary (expr, next)
+    in
+      case next of
+        L.ASTERISK :: tl =>
+          let
+            val (rightExpr, next) = primary (expr, tl)
+            val result = BINARY (expr, TIMES, rightExpr)
+          in
+            factor (result, next)
+          end
+      | L.SLASH :: tl =>
+          let
+            val (rightExpr, next) = primary (expr, tl)
+            val result = BINARY (expr, DIV, rightExpr)
+          in
+            factor (result, next)
+          end
+      | _ => (expr, next)
+    end
+
+  fun term (expr, next) =
+    let
+      val (expr, next) = factor (expr, next)
+    in
+      case next of
+        L.MINUS :: tl =>
+          let
+            val (rightExpr, next) = factor (expr, tl)
+            val result = BINARY (expr, MINUS, rightExpr)
+          in
+            term (result, next)
+          end
+      | L.PLUS :: tl =>
+          let
+            val (rightExpr, next) = factor (expr, tl)
+            val result = BINARY (expr, PLUS, rightExpr)
+          in
+            term (result, next)
+          end
+      | _ => (expr, next)
+    end
+
   fun parseIf (expr, next) =
     let
       val (expr, next) = term (expr, next)
@@ -80,59 +132,8 @@ struct
       | _ => (expr, next)
     end
 
-  and term (expr, next) =
-    let
-      val (expr, next) = factor (expr, next)
-    in
-      case next of
-        L.MINUS :: tl =>
-          let
-            val (rightExpr, next) = factor (expr, tl)
-            val result = BINARY (expr, MINUS, rightExpr)
-          in
-            term (result, next)
-          end
-      | L.PLUS :: tl =>
-          let
-            val (rightExpr, next) = factor (expr, tl)
-            val result = BINARY (expr, PLUS, rightExpr)
-          in
-            term (result, next)
-          end
-      | _ => (expr, next)
-    end
-
-  and factor (expr, next) =
-    let
-      val (expr, next) = primary (expr, next)
-    in
-      case next of
-        L.ASTERISK :: tl =>
-          let
-            val (rightExpr, next) = primary (expr, tl)
-            val result = BINARY (expr, TIMES, rightExpr)
-          in
-            factor (result, next)
-          end
-      | L.SLASH :: tl =>
-          let
-            val (rightExpr, next) = primary (expr, tl)
-            val result = BINARY (expr, DIV, rightExpr)
-          in
-            factor (result, next)
-          end
-      | _ => (expr, next)
-    end
-
-  and primary (expr, next) =
-    case next of
-      L.INT num :: tl =>
-        let val literal = INT_LITERAL num
-        in (LITERAL literal, tl)
-        end
-    | _ => (expr, next)
-
-  and expression next =
+  (* start of parsing loop *)
+  fun expression next =
     case next of
       L.INT num :: tl =>
         let
