@@ -375,9 +375,24 @@ struct
         val newPunctState = PunctDfa.getNewState (chr, punctState)
       in
         if chr = #"\"" then
-          let val (newPos, str) = getString (pos + 1, str, [])
-          in (newPos, STRING str :: acc)
-          end
+          (* found double quotes so we would like to parse string. 
+           * edge case: we might find that we went over another token 
+           * before we saw the double quotes, and we would like to 
+           * add that token to the token list.
+           * For example, if we parse the string `"hello"+"world"`,
+           * despite there being no space between + and world,
+           * we would like to add + to the token list in this function call,
+           * and let the helpGetTokens' loop call this function to parse the
+           * string onh the next iteration.
+           *
+           * The "pos = start" check helps us do that indirectly. *)
+          if pos = start then
+            let val (newPos, str) = getString (pos + 1, str, [])
+            in (newPos, STRING str :: acc)
+            end
+          else
+            getToken
+              (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
         else if areAllDead (newIdState, newIntState, punctState) then
           getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
         else
