@@ -54,9 +54,26 @@ struct
   | ANDALSO
   | ORELSE
 
-  datatype exp = LITERAL of literal | BINARY of exp * opt * exp | GROUP of exp
+  datatype unary = NEGATE_INT
+
+  datatype exp =
+    LITERAL of literal
+  | BINARY of exp * opt * exp
+  | UNARY of unary * exp
+  | GROUP of exp
+  | EMPTY
 
   structure L = Lexer
+
+  fun advanceLParen next =
+    case next of
+      L.R_PAREN :: tl => tl
+    | hd :: _ =>
+        ( print "expected L_PAREN to be followed by R_PAREN\n"
+        ; print ("but got: " ^ Lexer.tokenToString hd ^ "\n")
+        ; raise Size
+        )
+    | [] => (print "expected L_PAREN to be followed by R_PAREN\n"; raise Size)
 
   fun primary (expr, next) =
     case next of
@@ -70,34 +87,39 @@ struct
         end
     | L.L_PAREN :: tl =>
         let
-          val (expr, next) = primary (expr, tl)
-          val next =
-            case next of
-              L.R_PAREN :: tl => tl
-            | _ =>
-                ( print "expected L_PAREN to be followed by R_PAREN\n"
-                ; raise Size
-                )
+          val (expr, next) = parseIf (expr, tl)
+          val next = advanceLParen next
         in
           (GROUP expr, next)
         end
     | _ => (expr, next)
 
-  fun factor (expr, next) =
+  and unary (expr, next) =
+    case next of
+      L.TILDE :: tl =>
+        let
+          val (expr, next) = unary (expr, tl)
+          val result = UNARY (NEGATE_INT, expr)
+        in
+          (result, next)
+        end
+    | _ => primary (expr, next)
+
+  and factor (expr, next) =
     let
-      val (expr, next) = primary (expr, next)
+      val (expr, next) = unary (expr, next)
     in
       case next of
         L.ASTERISK :: tl =>
           let
-            val (rightExpr, next) = primary (expr, tl)
+            val (rightExpr, next) = unary (expr, tl)
             val result = BINARY (expr, TIMES, rightExpr)
           in
             factor (result, next)
           end
       | L.SLASH :: tl =>
           let
-            val (rightExpr, next) = primary (expr, tl)
+            val (rightExpr, next) = unary (expr, tl)
             val result = BINARY (expr, DIV, rightExpr)
           in
             factor (result, next)
@@ -105,7 +127,7 @@ struct
       | _ => (expr, next)
     end
 
-  fun term (expr, next) =
+  and term (expr, next) =
     let
       val (expr, next) = factor (expr, next)
     in
@@ -127,7 +149,7 @@ struct
       | _ => (expr, next)
     end
 
-  fun parseIf (expr, next) =
+  and parseIf (expr, next) =
     let
       val (expr, next) = term (expr, next)
     in
@@ -169,16 +191,11 @@ struct
     | L.L_PAREN :: tl =>
         let
           val (expr, next) = expression tl
-          val next =
-            case next of
-              L.R_PAREN :: tl => tl
-            | _ =>
-                ( print "expected L_PAREN to be followed by R_PAREN\n"
-                ; raise Size
-                )
+          val next = advanceLParen next
         in
           parseIf (GROUP expr, next)
         end
+    | L.TILDE :: _ => parseIf (EMPTY, next)
     | _ => raise Size
 
   fun ty (prev, next, fieldMap, typeName, tyEnv) =
@@ -259,9 +276,7 @@ fun main () =
     val _ = TextIO.closeIn io
     val tokens = Lexer.getTokens str
 
-    val _ = print "before parse\n"
     val parseTree = ParseTree.parse tokens
-    val _ = print "after parse\n"
   in
     parseTree
   end
