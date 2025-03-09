@@ -6,23 +6,17 @@ sig
   | STRING of string
 
   (* reserved words *)
-  | WHILE
-  | FOR
-  | TO
-  | BREAK
   | LET
   | IN
   | END
-  | FUNCTION
-  | VAR
+  | FUN
+  | VAL
   | TYPE
   | ARRAY
   | IF
   | THEN
   | ELSE
-  | DO
   | OF
-  | NIL
 
   (* punctuation *)
   | COMMA
@@ -47,7 +41,6 @@ sig
   | GREATER_THAN_OR_EQUAL
   | AMPERSAND
   | PIPE
-  | COLON_EQUALS
   | TILDE
 
   | EOF
@@ -68,23 +61,17 @@ struct
   | STRING of string
 
   (* reserved words *)
-  | WHILE
-  | FOR
-  | TO
-  | BREAK
   | LET
   | IN
   | END
-  | FUNCTION
-  | VAR
+  | FUN
+  | VAL
   | TYPE
   | ARRAY
   | IF
   | THEN
   | ELSE
-  | DO
   | OF
-  | NIL
 
   (* punctuation *)
   | COMMA
@@ -109,7 +96,6 @@ struct
   | GREATER_THAN_OR_EQUAL
   | AMPERSAND
   | PIPE
-  | COLON_EQUALS
   | TILDE
 
   | EOF
@@ -121,23 +107,17 @@ struct
     | STRING str => "STRING(" ^ str ^ ")"
 
     (* reserved words *)
-    | WHILE => "WHILE"
-    | FOR => "FOR"
-    | TO => "to"
-    | BREAK => "break"
     | LET => "let"
     | IN => "in"
     | END => "end"
-    | FUNCTION => "function"
-    | VAR => "var"
+    | FUN => "fun"
+    | VAL => "val"
     | TYPE => "type"
     | ARRAY => "array"
     | IF => "if"
     | THEN => "then"
     | ELSE => "else"
-    | DO => "do"
     | OF => "of"
-    | NIL => "nil"
 
     (* punctuation *)
     | COMMA => ","
@@ -162,30 +142,23 @@ struct
     | GREATER_THAN_OR_EQUAL => ">="
     | AMPERSAND => "&"
     | PIPE => "|"
-    | COLON_EQUALS => ":="
     | TILDE => "~"
 
     | EOF => "EOF"
 
   fun getWordOrID str =
     case str of
-      "while" => WHILE
-    | "for" => FOR
-    | "to" => TO
-    | "break" => BREAK
-    | "let" => LET
+      "let" => LET
     | "in" => IN
     | "end" => END
-    | "function" => FUNCTION
-    | "var" => VAR
+    | "fun" => FUN
+    | "val" => VAL
     | "type" => TYPE
     | "array" => ARRAY
     | "if" => IF
     | "then" => THEN
     | "else" => ELSE
-    | "do" => DO
     | "of" => OF
-    | "nil" => NIL
     | _ => ID str
 
   fun getPunct str =
@@ -212,7 +185,6 @@ struct
     | ">=" => GREATER_THAN_OR_EQUAL
     | "&" => AMPERSAND
     | "|" => PIPE
-    | ":=" => COLON_EQUALS
     | "~" => TILDE
     | _ => (print str; raise Empty)
 
