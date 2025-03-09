@@ -177,7 +177,7 @@ struct
                 ; raise Size
                 )
         in
-          (GROUP expr, next)
+          parseIf (GROUP expr, next)
         end
     | _ => raise Size
 
