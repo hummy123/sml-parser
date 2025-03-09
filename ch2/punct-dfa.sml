@@ -26,7 +26,9 @@ struct
   val notEquals = 21
   val lessThanOrEqual = 22
   val greaterThanOrEqual = 23
-  val start = 24
+
+  val tilde = 24
+  val start = 25
 
   fun mkStart i =
     let
@@ -52,6 +54,7 @@ struct
       | #">" => greaterThan
       | #"&" => ampersand
       | #"|" => pipe
+      | #"~" => tilde
       | _ => dead
     end
 
@@ -108,6 +111,8 @@ struct
   val lessThanOrEqualTable = deadTable
   val greaterThanOrEqualTable = deadTable
 
+  val tildeTable = deadTable
+
   val startTable = Vector.tabulate (255, mkStart)
 
   val states = vector
@@ -135,6 +140,7 @@ struct
     , notEqualsTable
     , lessThanOrEqualTable
     , greaterThanOrEqualTable
+    , tildeTable
     , startTable
     ]
 

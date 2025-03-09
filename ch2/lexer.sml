@@ -48,6 +48,7 @@ sig
   | AMPERSAND
   | PIPE
   | COLON_EQUALS
+  | TILDE
 
   | EOF
 
@@ -109,6 +110,7 @@ struct
   | AMPERSAND
   | PIPE
   | COLON_EQUALS
+  | TILDE
 
   | EOF
 
@@ -161,6 +163,7 @@ struct
     | AMPERSAND => "&"
     | PIPE => "|"
     | COLON_EQUALS => ":="
+    | TILDE => "~"
 
     | EOF => "EOF"
 
@@ -210,6 +213,7 @@ struct
     | "&" => AMPERSAND
     | "|" => PIPE
     | ":=" => COLON_EQUALS
+    | "~" => TILDE
     | _ => (print str; raise Empty)
 
   fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
