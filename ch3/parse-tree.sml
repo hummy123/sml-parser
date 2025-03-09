@@ -61,6 +61,8 @@ struct
   | BINARY of exp * opt * exp
   | UNARY of unary * exp
   | GROUP of exp
+  | VAL_ID of string
+  | FUNCTION_CALL of string * exp list
   | EMPTY
 
   structure L = Lexer
@@ -92,7 +94,39 @@ struct
         in
           (GROUP expr, next)
         end
+    | L.ID name :: tl => (VAL_ID name, tl)
     | _ => (expr, next)
+
+  and finishCall (funName, expr, next, args) =
+    let
+      val (expr, next) = parseIf (expr, next)
+      val args = expr :: args
+    in
+      case next of
+        L.COMMA :: tl => finishCall (funName, expr, tl, args)
+      | L.R_PAREN :: tl =>
+          let
+            val args = List.rev args
+            val result = FUNCTION_CALL (funName, args)
+          in
+            (result, tl)
+          end
+      | hd :: tl =>
+          ( print
+              ("functionCall did not terminate\n" ^ L.tokenToString hd ^ "\n")
+          ; raise Size
+          )
+    end
+
+  and functionCall (expr, next) =
+    case next of
+      L.ID funName :: L.L_PAREN :: L.R_PAREN :: tl =>
+        (* function call with no arguments *)
+        let val result = FUNCTION_CALL (funName, [])
+        in (result, tl)
+        end
+    | L.ID funName :: L.L_PAREN :: tl => finishCall (funName, expr, tl, [])
+    | _ => primary (expr, next)
 
   and unary (expr, next) =
     case next of
@@ -103,7 +137,7 @@ struct
         in
           (result, next)
         end
-    | _ => primary (expr, next)
+    | _ => functionCall (expr, next)
 
   and factor (expr, next) =
     let
@@ -188,6 +222,9 @@ struct
         in
           parseIf (literal, tl)
         end
+    (* function call *)
+    | L.ID _ :: L.L_PAREN :: _ => parseIf (EMPTY, next)
+    | L.ID name :: tl => parseIf (VAL_ID name, tl)
     | L.L_PAREN :: tl =>
         let
           val (expr, next) = expression tl
