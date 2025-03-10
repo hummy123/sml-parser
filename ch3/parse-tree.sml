@@ -89,7 +89,7 @@ struct
         end
     | L.L_PAREN :: tl =>
         let
-          val (expr, next) = parseIf (expr, tl)
+          val (expr, next) = comparison (expr, tl)
           val next = advanceLParen next
         in
           (GROUP expr, next)
@@ -99,7 +99,7 @@ struct
 
   and finishCall (funName, expr, next, args) =
     let
-      val (expr, next) = parseIf (expr, next)
+      val (expr, next) = comparison (expr, next)
       val args = expr :: args
     in
       case next of
@@ -111,9 +111,9 @@ struct
           in
             (result, tl)
           end
-      | hd :: tl =>
+      | _ =>
           ( print
-              ("functionCall did not terminate\n" ^ L.tokenToString hd ^ "\n")
+              ("functionCall " ^ funName ^ " did not terminate\n" ^ L.tokenToString hd ^ "\n")
           ; raise Size
           )
     end
@@ -183,7 +183,7 @@ struct
       | _ => (expr, next)
     end
 
-  and parseIf (expr, next) =
+  and comparison (expr, next) =
     let
       val (expr, next) = term (expr, next)
     in
@@ -193,14 +193,14 @@ struct
             val (rightExpr, next) = term (expr, tl)
             val result = BINARY (expr, ANDALSO, rightExpr)
           in
-            parseIf (result, next)
+            comparison (result, next)
           end
       | L.PIPE :: tl =>
           let
             val (rightExpr, next) = term (expr, tl)
             val result = BINARY (expr, ORELSE, rightExpr)
           in
-            parseIf (result, next)
+            comparison (result, next)
           end
       | _ => (expr, next)
     end
@@ -213,26 +213,26 @@ struct
           val literal = INT_LITERAL num
           val literal = LITERAL literal
         in
-          parseIf (literal, tl)
+          comparison (literal, tl)
         end
     | L.STRING str :: tl =>
         let
           val literal = STRING_LITERAL str
           val literal = LITERAL literal
         in
-          parseIf (literal, tl)
+          comparison (literal, tl)
         end
     (* function call *)
-    | L.ID _ :: L.L_PAREN :: _ => parseIf (EMPTY, next)
-    | L.ID name :: tl => parseIf (VAL_ID name, tl)
+    | L.ID _ :: L.L_PAREN :: _ => comparison (EMPTY, next)
+    | L.ID name :: tl => comparison (VAL_ID name, tl)
     | L.L_PAREN :: tl =>
         let
           val (expr, next) = expression tl
           val next = advanceLParen next
         in
-          parseIf (GROUP expr, next)
+          comparison (GROUP expr, next)
         end
-    | L.TILDE :: _ => parseIf (EMPTY, next)
+    | L.TILDE :: _ => comparison (EMPTY, next)
     | _ => raise Size
 
   fun ty (prev, next, fieldMap, typeName, tyEnv) =
