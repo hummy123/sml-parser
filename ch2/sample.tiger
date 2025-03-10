@@ -1,1 +1,2 @@
-hello (a, b, 1 + 1) = "hello"
+val arb = 1
+val cor = arb

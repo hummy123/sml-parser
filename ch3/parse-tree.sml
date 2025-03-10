@@ -13,29 +13,33 @@ struct
          val maxNodeSize = 8
        end)
 
+  (*
   datatype ty_env_value =
-    TYPE_ALIAS of string
+  TYPE_ALIAS of string
   | TYPE_DEC of FieldMap.t
   | ARRAY_DEC of string
-
+  
   structure TyEnv =
-    MakeGapMap
-      (struct
-         (* key = user-given name to type.
-          * There may be multiple types of the same name, 
-          * one declared after another.
-          * In that case, the old type is shadowed. *)
-         type key = string
-         type value = ty_env_value
+  MakeGapMap
+  (struct
+    (* key = user-given name to type.
+     * There may be multiple types of the same name, 
+     * one declared after another.
+     * In that case, the old type is shadowed. *)
+    type key = string
+    type value = ty_env_value
+  
+    fun l (s1: string, s2) = s1 < s2
+    fun eq (s1: string, s2) = s1 = s2
+    fun g (s1: string, s2) = s1 > s2
+  
+    val maxNodeSize = 8
+  end)
+  *)
 
-         fun l (s1: string, s2) = s1 < s2
-         fun eq (s1: string, s2) = s1 = s2
-         fun g (s1: string, s2) = s1 > s2
-
-         val maxNodeSize = 8
-       end)
-
-  datatype literal = INT_LITERAL of int | STRING_LITERAL of string
+  datatype literal =
+    INT_LITERAL of int
+  | STRING_LITERAL of string
 
   datatype opt =
   (* highest precedence *)
@@ -64,6 +68,8 @@ struct
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
   | EMPTY
+
+  datatype dec = TYPE_DEC of string | VAL_DEC of string * exp * dec | NO_DEC
 
   structure L = Lexer
 
@@ -112,8 +118,7 @@ struct
             (result, tl)
           end
       | _ =>
-          ( print
-              ("functionCall " ^ funName ^ " did not terminate\n" ^ L.tokenToString hd ^ "\n")
+          ( print ("functionCall " ^ funName ^ " did not terminate\n")
           ; raise Size
           )
     end
@@ -235,68 +240,84 @@ struct
     | L.TILDE :: _ => comparison (EMPTY, next)
     | _ => raise Size
 
-  fun ty (prev, next, fieldMap, typeName, tyEnv) =
+  fun dec next =
     case next of
-      L.ID fieldName :: L.COLON :: L.ID typeID :: tl =>
-        (* add field to map *)
+      L.VAL :: L.ID valName :: L.EQUALS :: tl =>
         let
-          val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
-        in
-          (case tl of
-             L.COMMA :: tl =>
-               (* continue to parse type *)
-               let
-                 val prev =
-                   L.COMMA :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
-                 val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
-               in
-                 ty (prev, tl, fieldMap, typeName, tyEnv)
-               end
-           | L.R_BRACE :: tl =>
-               (* terminate type *)
-               let
-                 val prev =
-                   L.R_BRACE :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
-               in
-                 (prev, tl, TyEnv.add (typeName, TYPE_DEC fieldMap, tyEnv))
-               end
-           | hd :: _ =>
-               let val _ = print "expected , or } but found something else\n"
-               in raise Size
-               end
-           | [] =>
-               let val _ = print "expected , or } but reached end of file\n"
-               in raise Size
-               end)
-        end
-    | _ => (print "53 unexpected"; raise Size)
+          val (expr, next) = expression tl
 
+          val (nextDec, next) = dec next
+
+          val result = VAL_DEC (valName, expr, nextDec)
+        in
+          (result, next)
+        end
+    | _ => (NO_DEC, next)
+
+  (*
+  fun ty (prev, next, fieldMap, typeName, tyEnv) =
+  case next of
+    L.ID fieldName :: L.COLON :: L.ID typeID :: tl =>
+      (* add field to map *)
+      let
+        val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
+      in
+        (case tl of
+           L.COMMA :: tl =>
+             (* continue to parse type *)
+             let
+               val prev =
+                 L.COMMA :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
+               val fieldMap = FieldMap.add (fieldName, typeID, fieldMap)
+             in
+               ty (prev, tl, fieldMap, typeName, tyEnv)
+             end
+         | L.R_BRACE :: tl =>
+             (* terminate type *)
+             let
+               val prev =
+                 L.R_BRACE :: L.ID typeID :: L.COLON :: L.ID fieldName :: prev
+             in
+               (prev, tl, TyEnv.add (typeName, TYPE_DEC fieldMap, tyEnv))
+             end
+         | hd :: _ =>
+             let val _ = print "expected , or } but found something else\n"
+             in raise Size
+             end
+         | [] =>
+             let val _ = print "expected , or } but reached end of file\n"
+             in raise Size
+             end)
+      end
+  | _ => (print "53 unexpected"; raise Size)
+  
   fun typ (prev, next, tyEnv) =
-    case next of
-      L.ID typeName :: L.EQUALS :: L.L_BRACE :: tl =>
-        let val prev = L.L_BRACE :: L.EQUALS :: L.ID typeName :: prev
-        in ty (prev, tl, FieldMap.empty, typeName, tyEnv)
-        end
-    | L.ID typeAlias :: L.EQUALS :: L.ID origTypeName :: tl =>
-        let
-          val prev = L.ID origTypeName :: L.EQUALS :: L.ID typeAlias :: prev
-          val tyEnv = TyEnv.add (typeAlias, TYPE_ALIAS origTypeName, tyEnv)
-        in
-          (prev, tl, tyEnv)
-        end
-    | L.ID typeAlias :: L.EQUALS :: L.ARRAY :: L.OF :: L.ID origTypeName :: tl =>
-        let
-          val prev =
-            L.ID origTypeName :: L.OF :: L.ARRAY :: L.EQUALS :: L.ID typeAlias
-            :: prev
-          val tyEnv = TyEnv.add (typeAlias, ARRAY_DEC origTypeName, tyEnv)
-        in
-          (prev, tl, tyEnv)
-        end
-    | _ => (print "85 unexpected"; raise Size)
+  case next of
+    L.ID typeName :: L.EQUALS :: L.L_BRACE :: tl =>
+      let val prev = L.L_BRACE :: L.EQUALS :: L.ID typeName :: prev
+      in ty (prev, tl, FieldMap.empty, typeName, tyEnv)
+      end
+  | L.ID typeAlias :: L.EQUALS :: L.ID origTypeName :: tl =>
+      let
+        val prev = L.ID origTypeName :: L.EQUALS :: L.ID typeAlias :: prev
+        val tyEnv = TyEnv.add (typeAlias, TYPE_ALIAS origTypeName, tyEnv)
+      in
+        (prev, tl, tyEnv)
+      end
+  | L.ID typeAlias :: L.EQUALS :: L.ARRAY :: L.OF :: L.ID origTypeName :: tl =>
+      let
+        val prev =
+          L.ID origTypeName :: L.OF :: L.ARRAY :: L.EQUALS :: L.ID typeAlias
+          :: prev
+        val tyEnv = TyEnv.add (typeAlias, ARRAY_DEC origTypeName, tyEnv)
+      in
+        (prev, tl, tyEnv)
+      end
+  | _ => (print "85 unexpected"; raise Size)
+  *)
 
   fun parse lst =
-    let val (tree, _) = expression lst
+    let val (tree, _) = dec lst
     in tree
     end
 end
