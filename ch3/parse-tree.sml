@@ -69,7 +69,9 @@ struct
   | FUNCTION_CALL of string * exp list
   | EMPTY
 
-  datatype dec = TYPE_DEC of string | VAL_DEC of string * exp * dec | NO_DEC
+  datatype val_dec = ONE_VAL of string * exp
+
+  datatype dec = TYPE_DEC of string | VAL_DECS of val_dec list | NO_DEC
 
   structure L = Lexer
 
@@ -240,15 +242,25 @@ struct
     | L.TILDE :: _ => comparison (EMPTY, next)
     | _ => raise Size
 
+  fun getValDecs (valList, next) =
+    case next of
+      L.VAL :: L.ID valName :: L.EQUALS :: tl =>
+        let
+          val (expr, next) = expression tl
+          val valList = ONE_VAL (valName, expr) :: valList
+        in
+          getValDecs (valList, next)
+        end
+    | _ => List.rev valList
+
   fun dec next =
     case next of
       L.VAL :: L.ID valName :: L.EQUALS :: tl =>
         let
           val (expr, next) = expression tl
-
-          val (nextDec, next) = dec next
-
-          val result = VAL_DEC (valName, expr, nextDec)
+          val valList = [ONE_VAL (valName, expr)]
+          val valList = getValDecs (valList, next)
+          val result = VAL_DECS valList
         in
           (result, next)
         end
