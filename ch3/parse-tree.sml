@@ -67,9 +67,12 @@ struct
   | GROUP of exp
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
+  | LET_EXPR of dec list * exp
   | EMPTY
 
-  datatype dec = TYPE_DEC of string | VAL_DEC of string * exp
+  and dec =
+    TYPE_DEC of string
+  | VAL_DEC of string * exp
 
   structure L = Lexer
 
@@ -83,24 +86,48 @@ struct
         )
     | [] => (print "expected L_PAREN to be followed by R_PAREN\n"; raise Size)
 
+  fun advanceToLetResult next =
+    case next of
+      L.IN :: tl => advanceToLetResult tl
+    | L.END :: tl => advanceToLetResult tl
+    | _ => next
+
   fun primary (expr, next) =
     case next of
       L.INT num :: tl =>
-        let val literal = INT_LITERAL num
-        in (LITERAL literal, tl)
+        let
+          val literal = INT_LITERAL num
+          val literal = LITERAL literal
+        in
+          comparison (literal, tl)
         end
     | L.STRING str :: tl =>
-        let val literal = STRING_LITERAL str
-        in (LITERAL literal, tl)
+        let
+          val literal = STRING_LITERAL str
+          val literal = LITERAL literal
+        in
+          comparison (literal, tl)
         end
+    (* function call *)
+    | L.ID _ :: L.L_PAREN :: _ => comparison (EMPTY, next)
+    | L.ID name :: tl => comparison (VAL_ID name, tl)
     | L.L_PAREN :: tl =>
         let
-          val (expr, next) = comparison (expr, tl)
+          val (expr, next) = expression tl
           val next = advanceLParen next
         in
-          (GROUP expr, next)
+          comparison (GROUP expr, next)
         end
-    | L.ID name :: tl => (VAL_ID name, tl)
+    | L.TILDE :: _ => comparison (EMPTY, next)
+    | L.LET :: tl =>
+        let
+          val (decs, next) = getDecs (tl, [])
+          val next = advanceToLetResult next
+          val (expr, next) = comparison (EMPTY, next)
+          val result = LET_EXPR (decs, expr)
+        in
+          (result, next)
+        end
     | _ => (expr, next)
 
   and finishCall (funName, expr, next, args) =
@@ -124,14 +151,18 @@ struct
     end
 
   and functionCall (expr, next) =
-    case next of
-      L.ID funName :: L.L_PAREN :: L.R_PAREN :: tl =>
-        (* function call with no arguments *)
-        let val result = FUNCTION_CALL (funName, [])
-        in (result, tl)
-        end
-    | L.ID funName :: L.L_PAREN :: tl => finishCall (funName, expr, tl, [])
-    | _ => primary (expr, next)
+    let
+      val (expr, next) = primary (expr, next)
+    in
+      case next of
+        L.ID funName :: L.L_PAREN :: L.R_PAREN :: tl =>
+          (* function call with no arguments *)
+          let val result = FUNCTION_CALL (funName, [])
+          in (result, tl)
+          end
+      | L.ID funName :: L.L_PAREN :: tl => finishCall (funName, expr, tl, [])
+      | _ => (expr, next)
+    end
 
   and unary (expr, next) =
     case next of
@@ -211,7 +242,7 @@ struct
     end
 
   (* start of parsing loop *)
-  fun expression next =
+  and expression next =
     case next of
       L.INT num :: tl =>
         let
@@ -238,6 +269,16 @@ struct
           comparison (GROUP expr, next)
         end
     | L.TILDE :: _ => comparison (EMPTY, next)
+    | L.LET :: tl =>
+        let
+          val _ = print "LET \n"
+          val (decs, next) = getDecs (tl, [])
+          val next = advanceToLetResult next
+          val (expr, next) = comparison (EMPTY, next)
+          val result = LET_EXPR (decs, expr)
+        in
+          (result, next)
+        end
     | _ => raise Size
 
   and getDecs (next, acc) =
@@ -248,7 +289,7 @@ struct
           val value = VAL_DEC (valName, expr)
           val valList = value :: acc
         in
-          getDecList (valList, next)
+          getDecs (next, valList)
         end
     | _ => (List.rev acc, next)
 
