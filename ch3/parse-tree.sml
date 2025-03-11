@@ -95,36 +95,10 @@ struct
     (* function call *)
     | L.ID _ :: L.L_PAREN :: _ => comparison (EMPTY, next)
     | L.ID name :: tl => comparison (VAL_ID name, tl)
-    | L.L_PAREN :: tl =>
-        let
-          val (expr, next) = expression tl
-          val next = advanceLParen next
-        in
-          comparison (GROUP expr, next)
-        end
+    | L.L_PAREN :: tl => parseGroup tl
     | L.TILDE :: _ => comparison (EMPTY, next)
-    | L.LET :: tl =>
-        let
-          val (decs, next) = getDecs (tl, [])
-          val next = advanceToLetResult next
-          val (expr, next) = comparison (EMPTY, next)
-          val result = LET_EXPR (decs, expr)
-        in
-          (result, next)
-        end
-    | L.IF :: tl =>
-        let
-          val (predicate, next) = expression tl
-          val next = advanceThen next
-
-          val (ifExp, next) = expression next
-          val next = advanceElse next
-
-          val (elseExp, next) = expression next
-          val result = IF_THEN_ELSE (predicate, ifExp, elseExp)
-        in
-          (result, next)
-        end
+    | L.LET :: tl => parseLet tl
+    | L.IF :: tl => parseIfExp tl
     | L.L_BRACE :: tl => parseRecord (tl, [])
     | _ => (expr, next)
 
@@ -258,6 +232,38 @@ struct
         end
     | _ => (print "258 unexpected token while parsing record\n"; raise Size)
 
+  and parseIfExp next =
+    let
+      val (predicate, next) = expression next
+      val next = advanceThen next
+
+      val (ifExp, next) = expression next
+      val next = advanceElse next
+
+      val (elseExp, next) = expression next
+      val result = IF_THEN_ELSE (predicate, ifExp, elseExp)
+    in
+      (result, next)
+    end
+
+  and parseLet next =
+    let
+      val (decs, next) = getDecs (next, [])
+      val next = advanceToLetResult next
+      val (expr, next) = comparison (EMPTY, next)
+      val result = LET_EXPR (decs, expr)
+    in
+      (result, next)
+    end
+
+  and parseGroup next =
+    let
+      val (expr, next) = expression next
+      val next = advanceLParen next
+    in
+      comparison (GROUP expr, next)
+    end
+
   (* start of parsing loop *)
   and expression next =
     case next of
@@ -278,36 +284,10 @@ struct
     (* function call *)
     | L.ID _ :: L.L_PAREN :: _ => comparison (EMPTY, next)
     | L.ID name :: tl => comparison (VAL_ID name, tl)
-    | L.L_PAREN :: tl =>
-        let
-          val (expr, next) = expression tl
-          val next = advanceLParen next
-        in
-          comparison (GROUP expr, next)
-        end
+    | L.L_PAREN :: tl => parseGroup tl
     | L.TILDE :: _ => comparison (EMPTY, next)
-    | L.LET :: tl =>
-        let
-          val (decs, next) = getDecs (tl, [])
-          val next = advanceToLetResult next
-          val (expr, next) = comparison (EMPTY, next)
-          val result = LET_EXPR (decs, expr)
-        in
-          (result, next)
-        end
-    | L.IF :: tl =>
-        let
-          val (predicate, next) = expression tl
-          val next = advanceThen next
-
-          val (ifExp, next) = expression next
-          val next = advanceElse next
-
-          val (elseExp, next) = expression next
-          val result = IF_THEN_ELSE (predicate, ifExp, elseExp)
-        in
-          (result, next)
-        end
+    | L.LET :: tl => parseLet tl
+    | L.IF :: tl => parseIfExp tl
     | L.L_BRACE :: tl => parseRecord (tl, [])
     | _ => (print "243 unexpected token\n"; raise Size)
 
