@@ -34,6 +34,7 @@ struct
   and dec =
     TYPE_DEC of string * {fieldName: string, fieldValue: string} list
   | VAL_DEC of string * exp
+  | FUN_DEC of string * string list * exp
 
   structure L = Lexer
 
@@ -232,7 +233,6 @@ struct
     | L.TILDE :: _ => comparison (EMPTY, next)
     | L.LET :: tl =>
         let
-          val _ = print "LET \n"
           val (decs, next) = getDecs (tl, [])
           val next = advanceToLetResult next
           val (expr, next) = comparison (EMPTY, next)
@@ -240,7 +240,7 @@ struct
         in
           (result, next)
         end
-    | _ => raise Size
+    | _ => (print "243 unexpected token\n"; raise Size)
 
   and getTypeDec (next, typeName, fieldAcc) =
     case next of
@@ -258,6 +258,37 @@ struct
         end
     | _ => (print "262: unexpected token while parsing type\n"; raise Size)
 
+  and advanceEqual next =
+    case next of
+      L.EQUALS :: tl => tl
+    | _ => (print "264: unexpected token while expecting = \n"; raise Size)
+
+  and finishFunDec (next, args, funName) =
+    case next of
+      L.ID argName :: L.COMMA :: tl =>
+        let val args = argName :: args
+        in finishFunDec (tl, args, funName)
+        end
+    | L.ID argName :: L.R_PAREN :: tl =>
+        let
+          val args = argName :: args
+          val args = List.rev args
+          val next = advanceEqual tl
+          val (expr, next) = expression next
+          val result = FUN_DEC (funName, args, expr)
+        in
+          (result, next)
+        end
+    | L.R_PAREN :: tl =>
+        let
+          val next = advanceEqual tl
+          val (expr, next) = expression next
+          val result = FUN_DEC (funName, [], expr)
+        in
+          (result, next)
+        end
+    | _ => (print "278: unexpected token while parsing fun dec\n"; raise Size)
+
   and getDecs (next, acc) =
     case next of
       L.VAL :: L.ID valName :: L.EQUALS :: tl =>
@@ -272,6 +303,13 @@ struct
         let
           val (typeDec, next) = getTypeDec (tl, typeName, [])
           val acc = typeDec :: acc
+        in
+          getDecs (next, acc)
+        end
+    | L.FUN :: L.ID funName :: L.L_PAREN :: tl =>
+        let
+          val (funDec, next) = finishFunDec (tl, [], funName)
+          val acc = funDec :: acc
         in
           getDecs (next, acc)
         end

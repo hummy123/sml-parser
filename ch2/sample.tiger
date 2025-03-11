@@ -1,6 +1,8 @@
 let
   val arb = "true"
   type program = {root: exp, leave: exp2}
+
+  fun hello (z) = 0
 in
   1 + 3
 end
