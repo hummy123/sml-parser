@@ -1,6 +1,5 @@
 let
-  val arb = if 0 then 111 else 999
-  fun hello (z) = 0
+  val record = {a = 1, b = 2, c = if 0 then 111 else 999}
 in
   1 + 3
 end

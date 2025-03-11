@@ -30,6 +30,7 @@ struct
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
   | IF_THEN_ELSE of exp * exp * exp
+  | RECORD_EXP of {fieldName: string, fieldValue: exp} list
   | EMPTY
 
   and dec =
@@ -63,6 +64,11 @@ struct
     case next of
       L.ELSE :: tl => tl
     | _ => (print "60: unexpected token while expecting else"; raise Size)
+
+  fun advanceIfComma next =
+    case next of
+      L.COMMA :: tl => tl
+    | _ => next
 
   fun advanceToLetResult next =
     case next of
@@ -119,6 +125,7 @@ struct
         in
           (result, next)
         end
+    | L.L_BRACE :: tl => parseRecord (tl, [])
     | _ => (expr, next)
 
   and finishCall (funName, expr, next, args) =
@@ -232,6 +239,25 @@ struct
       | _ => (expr, next)
     end
 
+  and parseRecord (next, acc) =
+    case next of
+      L.ID fieldName :: L.EQUALS :: tl =>
+        let
+          val (expr, next) = expression tl
+          val acc = {fieldName = fieldName, fieldValue = expr} :: acc
+          val next = advanceIfComma next
+        in
+          parseRecord (next, acc)
+        end
+    | L.R_BRACE :: tl =>
+        let
+          val record = List.rev acc
+          val record = RECORD_EXP record
+        in
+          (record, tl)
+        end
+    | _ => (print "258 unexpected token while parsing record\n"; raise Size)
+
   (* start of parsing loop *)
   and expression next =
     case next of
@@ -282,6 +308,7 @@ struct
         in
           (result, next)
         end
+    | L.L_BRACE :: tl => parseRecord (tl, [])
     | _ => (print "243 unexpected token\n"; raise Size)
 
   and getTypeDec (next, typeName, fieldAcc) =
@@ -290,10 +317,11 @@ struct
         let
           val fieldAcc =
             {fieldName = fieldName, fieldValue = fieldValue} :: fieldAcc
+
+          val tl = advanceIfComma tl
         in
           getTypeDec (tl, typeName, fieldAcc)
         end
-    | L.COMMA :: tl => getTypeDec (tl, typeName, fieldAcc)
     | L.R_BRACE :: tl =>
         let val result = TYPE_DEC (typeName, List.rev fieldAcc)
         in (result, tl)
