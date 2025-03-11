@@ -29,6 +29,7 @@ struct
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
+  | IF_THEN_ELSE of exp * exp * exp
   | EMPTY
 
   and dec =
@@ -47,6 +48,21 @@ struct
         ; raise Size
         )
     | [] => (print "expected L_PAREN to be followed by R_PAREN\n"; raise Size)
+
+  fun advanceEqual next =
+    case next of
+      L.EQUALS :: tl => tl
+    | _ => (print "264: unexpected token while expecting = \n"; raise Size)
+
+  fun advanceThen next =
+    case next of
+      L.THEN :: tl => tl
+    | _ => (print "60: unexpected token while expecting then"; raise Size)
+
+  fun advanceElse next =
+    case next of
+      L.ELSE :: tl => tl
+    | _ => (print "60: unexpected token while expecting else"; raise Size)
 
   fun advanceToLetResult next =
     case next of
@@ -87,6 +103,19 @@ struct
           val next = advanceToLetResult next
           val (expr, next) = comparison (EMPTY, next)
           val result = LET_EXPR (decs, expr)
+        in
+          (result, next)
+        end
+    | L.IF :: tl =>
+        let
+          val (predicate, next) = expression tl
+          val next = advanceThen next
+
+          val (ifExp, next) = expression next
+          val next = advanceElse next
+
+          val (elseExp, next) = expression next
+          val result = IF_THEN_ELSE (predicate, ifExp, elseExp)
         in
           (result, next)
         end
@@ -240,6 +269,19 @@ struct
         in
           (result, next)
         end
+    | L.IF :: tl =>
+        let
+          val (predicate, next) = expression tl
+          val next = advanceThen next
+
+          val (ifExp, next) = expression next
+          val next = advanceElse next
+
+          val (elseExp, next) = expression next
+          val result = IF_THEN_ELSE (predicate, ifExp, elseExp)
+        in
+          (result, next)
+        end
     | _ => (print "243 unexpected token\n"; raise Size)
 
   and getTypeDec (next, typeName, fieldAcc) =
@@ -257,11 +299,6 @@ struct
         in (result, tl)
         end
     | _ => (print "262: unexpected token while parsing type\n"; raise Size)
-
-  and advanceEqual next =
-    case next of
-      L.EQUALS :: tl => tl
-    | _ => (print "264: unexpected token while expecting = \n"; raise Size)
 
   and finishFunDec (next, args, funName) =
     case next of

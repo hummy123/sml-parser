@@ -1,7 +1,5 @@
 let
-  val arb = "true"
-  type program = {root: exp, leave: exp2}
-
+  val arb = if 0 then 111 else 999
   fun hello (z) = 0
 in
   1 + 3
