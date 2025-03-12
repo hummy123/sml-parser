@@ -186,4 +186,28 @@ struct
           end
       | PT.EMPTY => (print "received EMPTY on loopExp\n"; raise Size)
   end
+
+  fun interpret exp = loopExp (exp, SymbolTable.empty)
 end
+
+fun ioToString (io, str) =
+  case TextIO.inputLine io of
+    SOME tl => ioToString (io, str ^ tl)
+  | NONE => str
+
+fun main () =
+  let
+    val io = TextIO.openIn "../ch2/sample.tiger"
+    val str = ioToString (io, "")
+    val _ = TextIO.closeIn io
+    val tokens = Lexer.getTokens str
+    val parseTree = ParseTree.parse tokens
+
+    val interpretValue = Interpreter.interpret parseTree
+
+    val valueString = RuntimeValue.toString interpretValue
+  in
+    print valueString
+  end
+
+val () = main ()
