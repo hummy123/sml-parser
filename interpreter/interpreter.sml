@@ -134,8 +134,15 @@ struct
           in
             loopDecs (tl, table)
           end
+      | PT.FUN_DEC (funName, args, funBody) :: tl =>
+          let
+            val functionValue = RV.FUN_DEC
+              {funName = funName, argNames = args, body = funBody, env = table}
+            val table = SymbolTable.add (funName, functionValue, table)
+          in
+            loopDecs (tl, table)
+          end
       | PT.TYPE_DEC _ :: _ => (print "TYPE_DEC not yet supported"; raise Size)
-      | PT.FUN_DEC _ :: _ => (print "FUN_DEC not yet supported"; raise Size)
       | [] => table
 
     and loopExp (exp, table) =
