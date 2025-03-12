@@ -3,18 +3,7 @@ struct
   structure PT = ParseTree
   structure RV = RuntimeValue
 
-  structure SymbolTable =
-    MakeGapMap
-      (struct
-         type key = string
-         type value = RuntimeValue.runtime_value
-
-         fun l (a: string, b: string) = a < b
-         fun eq (a: string, b: string) = a = b
-         fun g (a: string, b: string) = a > b
-
-         val maxNodeSize = 9
-       end)
+  structure SymbolTable = StringMap
 
   local
     fun boolToInt b =

@@ -4,6 +4,11 @@ struct
     INT_VALUE of int
   | STRING_VALUE of string
   | RECORD_VALUE of {fieldName: string, fieldValue: runtime_value} list
+  | FUN_DEC of
+      { argNames: string list
+      , body: ParseTree.exp
+      , env: runtime_value StringMap.t
+      }
 
   structure MakeString =
   struct
@@ -17,6 +22,8 @@ struct
       | STRING_VALUE str => str
       | RECORD_VALUE lst =>
           makeRecordString (lst, spaces + 2, if spaces = 0 then "" else "\n")
+      | FUN_DEC _ =>
+          (print "incorrectly tried to print FUN_VALUE\n"; raise Size)
 
     and makeRecordString (lst, spaces, acc) =
       case lst of
