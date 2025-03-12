@@ -31,7 +31,7 @@ struct
   | LET_EXPR of dec list * exp
   | IF_THEN_ELSE of exp * exp * exp
   | RECORD_EXP of {fieldName: string, fieldValue: exp} list
-  | SELECT_FIELD of string
+  | SELECT_FIELD of string * exp
   | EMPTY
 
   and dec =
@@ -101,7 +101,13 @@ struct
     | L.LET :: tl => parseLet tl
     | L.IF :: tl => parseIfExp tl
     | L.L_BRACE :: tl => parseRecord (tl, [])
-    | L.HASH :: L.ID fieldName :: tl => (SELECT_FIELD fieldName, tl)
+    | L.HASH :: L.ID fieldName :: tl =>
+        let
+          val (expr, next) = comparison (EMPTY, tl)
+          val result = SELECT_FIELD (fieldName, expr)
+        in
+          comparison (result, next)
+        end
     | _ => (expr, next)
 
   and finishCall (funName, expr, next, args) =
@@ -291,7 +297,13 @@ struct
     | L.LET :: tl => comparison (parseLet tl)
     | L.IF :: tl => comparison (parseIfExp tl)
     | L.L_BRACE :: tl => comparison (parseRecord (tl, []))
-    | L.HASH :: L.ID fieldName :: tl => comparison (SELECT_FIELD fieldName, tl)
+    | L.HASH :: L.ID fieldName :: tl =>
+        let
+          val (expr, next) = comparison (EMPTY, tl)
+          val result = SELECT_FIELD (fieldName, expr)
+        in
+          comparison (result, next)
+        end
     | _ => (print "243 unexpected token\n"; raise Size)
 
   and getTypeDec (next, typeName, fieldAcc) =
