@@ -42,6 +42,7 @@ sig
   | AMPERSAND
   | PIPE
   | TILDE
+  | HASH
 
   | EOF
 
@@ -97,6 +98,7 @@ struct
   | AMPERSAND
   | PIPE
   | TILDE
+  | HASH
 
   | EOF
 
@@ -143,6 +145,7 @@ struct
     | AMPERSAND => "&"
     | PIPE => "|"
     | TILDE => "~"
+    | HASH => "#"
 
     | EOF => "EOF"
 
@@ -186,6 +189,7 @@ struct
     | "&" => AMPERSAND
     | "|" => PIPE
     | "~" => TILDE
+    | "#" => HASH
     | _ => (print str; raise Empty)
 
   fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =

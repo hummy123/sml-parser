@@ -28,7 +28,8 @@ struct
   val greaterThanOrEqual = 23
 
   val tilde = 24
-  val start = 25
+  val hash = 25
+  val start = 26
 
   fun mkStart i =
     let
@@ -55,6 +56,7 @@ struct
       | #"&" => ampersand
       | #"|" => pipe
       | #"~" => tilde
+      | #"#" => hash
       | _ => dead
     end
 
@@ -113,6 +115,9 @@ struct
 
   val tildeTable = deadTable
 
+  (* not the hash table data structure but a DFA *)
+  val hashTable = deadTable
+
   val startTable = Vector.tabulate (255, mkStart)
 
   val states = vector
@@ -141,6 +146,7 @@ struct
     , lessThanOrEqualTable
     , greaterThanOrEqualTable
     , tildeTable
+    , hashTable
     , startTable
     ]
 

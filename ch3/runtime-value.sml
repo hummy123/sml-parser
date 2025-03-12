@@ -1,4 +1,4 @@
-structure DynamicInterpreter =
+structure RuntimeValue =
 struct
   datatype runtime_value =
     INT_VALUE of int
@@ -39,18 +39,21 @@ struct
     fun makeString value = helpMakeString (value, 0)
   end
 
-  val value = RECORD_VALUE
-    [ {fieldName = "name", fieldValue = STRING_VALUE "Thomas"}
-    , {fieldName = "age", fieldValue = INT_VALUE 33}
-    , { fieldName = "school"
-      , fieldValue = RECORD_VALUE
-          [ { fieldName = "schoolName"
-            , fieldValue = STRING_VALUE "Belvoir College"
-            }
-          , {fieldName = "lastYear", fieldValue = INT_VALUE 13}
-          ]
-      }
-    ]
+(*
+ * test value we can print:
+val value = RECORD_VALUE
+  [ {fieldName = "name", fieldValue = STRING_VALUE "Thomas"}
+  , {fieldName = "age", fieldValue = INT_VALUE 33}
+  , { fieldName = "school"
+    , fieldValue = RECORD_VALUE
+        [ { fieldName = "schoolName"
+          , fieldValue = STRING_VALUE "Belvoir College"
+          }
+        , {fieldName = "lastYear", fieldValue = INT_VALUE 13}
+        ]
+    }
+  ]
 
-  val valueString = MakeString.makeString value
+val valueString = MakeString.makeString value
+*)
 end
