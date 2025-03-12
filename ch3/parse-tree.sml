@@ -379,23 +379,21 @@ struct
     let val (tree, _) = expression lst
     in tree
     end
-end
-
-(*
-fun ioToString (io, str) =
-  case TextIO.inputLine io of
-    SOME tl => ioToString (io, str ^ tl)
-  | NONE => str
-
-fun main () =
-  let
-    val io = TextIO.openIn "../ch2/sample.tiger"
-    val str = ioToString (io, "")
-    val _ = TextIO.closeIn io
-    val tokens = Lexer.getTokens str
-
-    val parseTree = ParseTree.parse tokens
-  in
-    parseTree
-  end
-*)
+end (*
+    fun ioToString (io, str) =
+      case TextIO.inputLine io of
+        SOME tl => ioToString (io, str ^ tl)
+      | NONE => str
+    
+    fun main () =
+      let
+        val io = TextIO.openIn "../ch2/sample.tiger"
+        val str = ioToString (io, "")
+        val _ = TextIO.closeIn io
+        val tokens = Lexer.getTokens str
+    
+        val parseTree = ParseTree.parse tokens
+      in
+        parseTree
+      end
+    *)
