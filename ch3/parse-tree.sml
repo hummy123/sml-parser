@@ -381,6 +381,7 @@ struct
     end
 end
 
+(*
 fun ioToString (io, str) =
   case TextIO.inputLine io of
     SOME tl => ioToString (io, str ^ tl)
@@ -397,5 +398,4 @@ fun main () =
   in
     parseTree
   end
-
-val _ = main ()
+*)

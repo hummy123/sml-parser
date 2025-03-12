@@ -39,6 +39,8 @@ struct
     fun makeString value = helpMakeString (value, 0)
   end
 
+  val toString = MakeString.makeString
+
 (*
  * test value we can print:
 val value = RECORD_VALUE
