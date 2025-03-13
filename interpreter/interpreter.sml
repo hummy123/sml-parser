@@ -145,6 +145,34 @@ struct
       | PT.TYPE_DEC _ :: _ => (print "TYPE_DEC not yet supported"; raise Size)
       | [] => table
 
+    and addArgsToTable (args, argNames, table) =
+      case (args, argNames) of
+        (argHd :: argTl, nameHd :: nameTl) =>
+          let val table = SymbolTable.add (nameHd, argHd, table)
+          in addArgsToTable (argTl, nameTl, table)
+          end
+      | ([], []) => table
+      | ([], _ :: _) =>
+          (print "152 interpeter.sml: argNames is longer than args"; raise Size)
+      | (_ :: _, []) =>
+          (print "154 interpeter.sml: args is longer than argNames"; raise Size)
+
+    and callFunction (value, args) =
+      case value of
+        RV.FUN_DEC {funName, argNames, body, env = table} =>
+          let
+            (* add (argName, arg) pair to table so it is accessible in environment 
+             * and then evaluate body of function *)
+            val table = addArgsToTable (args, argNames, table)
+          in
+            loopExp (body, table)
+          end
+      | _ =>
+          ( print
+              "152 interpeter.sml: expected FUN_DEC but received other value\n"
+          ; raise Size
+          )
+
     and loopExp (exp, table) =
       case exp of
         PT.LITERAL lit => literalToRuntimeValue lit
@@ -161,8 +189,18 @@ struct
           end
       | PT.GROUP exp => loopExp (exp, table)
       | PT.VAL_ID id => getSymbolValue (id, table)
-      | PT.FUNCTION_CALL (_, _) =>
-          (print "function call not yet implemented"; raise Size)
+      | PT.FUNCTION_CALL (funName, exps) =>
+          let
+            val args = List.map (fn exp => loopExp (exp, table)) exps
+          in
+            case SymbolTable.get (funName, table) of
+              SOME value => callFunction (value, args)
+            | NONE =>
+                ( print
+                    "171 interpreter.sml: did not find function of the same name\n"
+                ; raise Size
+                )
+          end
       | PT.LET_EXPR (decs, exp) =>
           let val table = loopDecs (decs, table)
           in loopExp (exp, table)
@@ -201,7 +239,7 @@ fun main () =
 
     val interpretValue = Interpreter.interpret parseTree
 
-    val valueString = RuntimeValue.toString interpretValue
+    val valueString = RuntimeValue.toString interpretValue ^ "\n"
   in
     print valueString
   end

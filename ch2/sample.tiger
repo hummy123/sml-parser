@@ -1,6 +1,5 @@
 let
-  val record = {a = 1, b = 2, c = if 1 then 111 else 999}
-  val a = #c record
+  fun addition (a, b) = a + b
 in
-  a
+  addition (1, 2)
 end

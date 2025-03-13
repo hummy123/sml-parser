@@ -112,7 +112,7 @@ struct
 
   and finishCall (funName, expr, next, args) =
     let
-      val (expr, next) = comparison (expr, next)
+      val (expr, next) = primary (expr, next)
       val args = expr :: args
     in
       case next of
@@ -131,18 +131,14 @@ struct
     end
 
   and functionCall (expr, next) =
-    let
-      val (expr, next) = primary (expr, next)
-    in
-      case next of
-        L.ID funName :: L.L_PAREN :: L.R_PAREN :: tl =>
-          (* function call with no arguments *)
-          let val result = FUNCTION_CALL (funName, [])
-          in (result, tl)
-          end
-      | L.ID funName :: L.L_PAREN :: tl => finishCall (funName, expr, tl, [])
-      | _ => (expr, next)
-    end
+    case next of
+      L.ID funName :: L.L_PAREN :: L.R_PAREN :: tl =>
+        (* function call with no arguments *)
+        let val result = FUNCTION_CALL (funName, [])
+        in (result, tl)
+        end
+    | L.ID funName :: L.L_PAREN :: tl => finishCall (funName, expr, tl, [])
+    | _ => primary (expr, next)
 
   and unary (expr, next) =
     case next of
