@@ -56,12 +56,12 @@ struct
           (print "geq type error\n"; raise Size)
 
     fun andExp (RV.INT_VALUE l, RV.INT_VALUE r) =
-          boolToInt (l = 1 andalso r = 1)
+          boolToInt (l <> 0 andalso r <> 0)
       | andExp (_, _) =
           (print "andExp type error\n"; raise Size)
 
     fun orExp (RV.INT_VALUE l, RV.INT_VALUE r) =
-          boolToInt (l = 1 orelse r = 1)
+          boolToInt (l <> 0 orelse r <> 0)
       | orExp (_, _) =
           (print "orExp type error\n"; raise Size)
 
