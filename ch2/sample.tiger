@@ -1,5 +1,9 @@
 let
-  fun addition (a, b) = a + b
+  fun countToZero (counter) =
+    if counter | counter then
+      countToZero (counter - 1)
+    else
+      counter
 in
-  addition (1, 2)
+  countToZero (1)
 end

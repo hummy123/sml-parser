@@ -159,8 +159,11 @@ struct
 
     and callFunction (value, args) =
       case value of
-        RV.FUN_DEC {funName, argNames, body, env = table} =>
+        (functionValue as RV.FUN_DEC {funName, argNames, body, env = table}) =>
           let
+            (* add functionValue back into table, 
+             * which allows function to call itself *)
+            val table = SymbolTable.add (funName, functionValue, table)
             (* add (argName, arg) pair to table so it is accessible in environment 
              * and then evaluate body of function *)
             val table = addArgsToTable (args, argNames, table)
