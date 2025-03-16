@@ -42,88 +42,124 @@ struct
   structure L = Lexer
 
   local
-    fun toIntLiteral num =
-      LITERAL (INT_LITERAL num)
+    fun getStringLiteral s =
+      LITERAL (STRING_LITERAL s)
+    fun getIntLiteral i =
+      LITERAL (INT_LITERAL i)
 
-    fun makeBin (nodeStack, opt) =
-      case nodeStack of
-        r :: l :: tl => BINARY (l, opt, r) :: tl
-      | _ => raise Match
+    fun optPower (TIMES) = 5
+      | optPower (DIV) = 5
+      | optPower (MINUS) = 3
+      | optPower (PLUS) = 3
+      | optPower (_) = raise Empty
 
-    fun loopRpn (nodeStack, yardList) =
-      case yardList of
-        L.INT num :: tl => loopRpn (toIntLiteral num :: nodeStack, tl)
-      | L.ASTERISK :: tl =>
-          let val nodeStack = makeBin (nodeStack, TIMES)
-          in loopRpn (nodeStack, tl)
+    fun reduce (opt, fnStack, valStack) =
+      let
+        val newPower = optPower opt
+      in
+        case fnStack of
+          L.PLUS :: fntl =>
+            let
+              val topPower = optPower PLUS
+            in
+              if topPower > newPower then
+                case valStack of
+                  b :: a :: valtl =>
+                    let val result = BINARY (a, PLUS, b)
+                    in reduce (opt, fntl, result :: valtl)
+                    end
+                | _ => (print "reduce valStack case\n"; raise Size)
+              else
+                (fnStack, valStack)
+            end
+        | hd :: tl =>
+            ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "\n")
+            ; raise Size
+            )
+        | [] => (fnStack, valStack)
+      end
+
+    fun reduceUntilEmpty (fnStack, valStack) =
+      case fnStack of
+        L.PLUS :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, PLUS, b) :: valtl
+                in reduceUntilEmpty (fntl, result)
+                end
           end
-      | L.SLASH :: tl =>
-          let val nodeStack = makeBin (nodeStack, DIV)
-          in loopRpn (nodeStack, tl)
-          end
-      | L.PLUS :: tl =>
-          let val nodeStack = makeBin (nodeStack, PLUS)
-          in loopRpn (nodeStack, tl)
-          end
-      | L.MINUS :: tl =>
-          let val nodeStack = makeBin (nodeStack, MINUS)
-          in loopRpn (nodeStack, tl)
-          end
-      | [] => List.hd nodeStack
+      | [L.EOF] => valStack
+      | [] => valStack
 
-    fun whenPlusOrMinusToken (numStack, opStack) =
-      case opStack of
-        L.ASTERISK :: tl => whenPlusOrMinusToken (L.ASTERISK :: numStack, tl)
-      | L.SLASH :: tl => whenPlusOrMinusToken (L.SLASH :: numStack, tl)
-      | L.PLUS :: tl => (L.PLUS :: numStack, tl)
-      | L.MINUS :: tl => (L.MINUS :: numStack, tl)
-      | _ => (numStack, opStack)
-
-    fun popToLParen (numStack, opStack) =
-      case opStack of
-        L.L_PAREN :: tl => (numStack, tl)
-      | hd :: tl => popToLParen (hd :: numStack, tl)
-      | [] => (numStack, opStack)
-
-    fun finishYard (numStack, opStack) =
-      case opStack of
-        hd :: tl => finishYard (hd :: numStack, tl)
-      | [] => loopRpn ([], List.rev numStack)
-
-    fun loop (tokens, numStack, opStack) =
+    fun binary (tokens, fnStack, valStack) =
       case tokens of
-        L.INT num :: tl => loop (tl, L.INT num :: numStack, opStack)
-      | L.ASTERISK :: tl =>
-          let val opStack = L.ASTERISK :: opStack
-          in loop (tl, numStack, opStack)
-          end
-      | L.SLASH :: tl =>
-          let val opStack = L.SLASH :: opStack
-          in loop (tl, numStack, opStack)
-          end
-      | L.PLUS :: tl =>
+        L.PLUS :: tl =>
           let
-            val (numStack, opStack) = whenPlusOrMinusToken (numStack, opStack)
-            val opStack = L.PLUS :: opStack
+            val (fnStack, valStack) = reduce (PLUS, fnStack, valStack)
+            val fnStack = L.PLUS :: fnStack
           in
-            loop (tl, numStack, opStack)
+            unary (tl, fnStack, valStack)
           end
-      | L.MINUS :: tl =>
+      | [] => (fnStack, valStack)
+      | [L.EOF] => (fnStack, valStack)
+      | _ => (print "unexpected binary\n"; raise Size)
+
+    and unary (tokens, fnStack, valStack) =
+      case tokens of
+      (* constantds, identifiers/variables *)
+        L.STRING str :: tl =>
           let
-            val (numStack, opStack) = whenPlusOrMinusToken (numStack, opStack)
-            val opStack = L.MINUS :: opStack
+            val lit = getStringLiteral str
+            val valStack = lit :: valStack
           in
-            loop (tl, numStack, opStack)
+            binary (tl, fnStack, valStack)
           end
-      | L.L_PAREN :: tl => loop (tl, numStack, L.L_PAREN :: opStack)
-      | L.R_PAREN :: tl =>
-          let val (numStack, opStack) = popToLParen (numStack, opStack)
-          in loop (tl, numStack, opStack)
+      | L.INT num :: tl =>
+          let
+            val lit = getIntLiteral num
+            val valStack = lit :: valStack
+          in
+            binary (tl, fnStack, valStack)
           end
-      | L.EOF :: _ => (finishYard (numStack, opStack), [])
-      | [] => (finishYard (numStack, opStack), [])
-      | _ :: _ => (finishYard (numStack, opStack), tokens)
+      | L.ID valName :: tl =>
+          let
+            val id = VAL_ID valName
+            val valStack = id :: valStack
+          in
+            binary (tl, fnStack, valStack)
+          end
+      (* L_PAREN for grouping *)
+      (*
+      | L.L_PAREN :: tl =>
+          let
+            val fnStack = L.PAREN :: fnStack
+          in
+            unary (tl, fnStack, valStack)
+          end
+      (* operators *)
+         | L.TILDE :: tl => 
+           let
+             val fnStack = L.TILDE :: fnStack
+           in
+             unary (tl, fnStack, valStack)
+           end
+           *)
+      | [] => (fnStack, valStack)
+      | [L.EOF] => (fnStack, valStack)
+      | _ => (print "unexpected token during unary stage"; raise Size)
   in
-    fun yard tokens = loop (tokens, [], [])
+    fun dblE tokens =
+      let val (fnStack, valStack) = unary (tokens, [], [])
+      in reduceUntilEmpty (fnStack, valStack)
+      end
   end
 end
+
+fun dbl str =
+  let
+    val tokens = Lexer.getTokens str
+    val r = Yard.dblE tokens
+  in
+    r
+  end
