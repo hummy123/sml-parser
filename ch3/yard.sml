@@ -42,92 +42,90 @@ struct
   structure L = Lexer
 
   local
-    fun pushTimesDivToOpStack opStack =
-      case opStack of
-        [] => true
-      | L.PLUS :: _ => true
-      | L.MINUS :: _ => true
-      | _ :: _ => false
+    (*
+      fun toIntLiteral num = LITERAL (INT_LITERAL num)
+        | toIntLiteral _ = raise Empty
+    
+      fun loopRpn (yardList, ast) =
+        case yardList of
+          L.INT a :: L.INT b :: tl => 
+        | opt :: tl =>
+            let in
+              case newNumStack of
+                L.INT b :: L.INT a :: tl =>
+    
+      fun rpnToParseTree lst =
+        case lst of
+          [L.INT num] => toIntLiteral num
+        | L.INT a :: L.INT b :: 
+          L.INT num1 :: tl => 
+          let
+            val num1 = toIntLiteral num
+          in
+            *)
 
-    fun pushPlusMinusToOpStack opStack =
+    fun whenPlusOrMinusToken (numStack, opStack) =
       case opStack of
-        L.ASTERISK :: _ => true
-      | L.SLASH :: _ => true
-      | [] => true
-      | _ :: _ => false
+        L.ASTERISK :: tl => whenPlusOrMinusToken (L.ASTERISK :: numStack, tl)
+      | L.SLASH :: tl => whenPlusOrMinusToken (L.SLASH :: numStack, tl)
+      | L.PLUS :: tl => (L.PLUS :: numStack, tl)
+      | L.MINUS :: tl => (L.MINUS :: numStack, tl)
+      | _ => (numStack, opStack)
 
-    fun moveOpsToNumStack (numStack, opStack) =
+    fun popToLParen (numStack, opStack) =
       case opStack of
-        L.L_PAREN :: [] => numStack
-      | hd :: tl => moveOpsToNumStack (hd :: numStack, tl)
-      | [] => numStack
-
-    fun popWithinContext opStack =
-      case opStack of
-        L.L_PAREN :: _ => opStack
-      | hd :: tl => popWithinContext tl
-      | [] => opStack
-
-    fun popUntilLParen (numStack, opStack) =
-      case opStack of
-        Lexer.L_PAREN :: tl => (numStack, tl)
-      | hd :: tl => popUntilLParen (hd :: numStack, tl)
+        L.L_PAREN :: tl => (numStack, tl)
+      | hd :: tl => popToLParen (hd :: numStack, tl)
       | [] => (numStack, opStack)
 
-    fun loopTimesDiv (token, numStack, opStack, tl, fLoop) =
-      if pushTimesDivToOpStack opStack then
-        fLoop (tl, numStack, token :: opStack)
-      else
-        let val numStack = moveOpsToNumStack (numStack, opStack)
-        in fLoop (tl, numStack, token :: (popWithinContext opStack))
-        end
+    fun finishYard (numStack, opStack) =
+      case opStack of
+        hd :: tl => finishYard (hd :: numStack, tl)
+      | [] => List.rev numStack
 
-    and loopPlusMinus (token, numStack, opStack, tl, fLoop) =
-      if pushPlusMinusToOpStack opStack then
-        fLoop (tl, numStack, token :: opStack)
-      else
-        let val numStack = moveOpsToNumStack (numStack, opStack)
-        in fLoop (tl, numStack, token :: (popWithinContext opStack))
-        end
-
-    and loopParens (tokens, numStack, opStack) =
-      case tokens of
-        L.INT num :: tl => loopParens (tl, L.INT num :: numStack, opStack)
-      | L.ASTERISK :: tl =>
-          loopTimesDiv (L.ASTERISK, numStack, opStack, tl, loopParens)
-      | L.SLASH :: tl =>
-          loopTimesDiv (L.SLASH, numStack, opStack, tl, loopParens)
-      | L.PLUS :: tl =>
-          loopPlusMinus (L.PLUS, numStack, opStack, tl, loopParens)
-      | L.MINUS :: tl =>
-          loopPlusMinus (L.MINUS, numStack, opStack, tl, loopParens)
-      | L.R_PAREN :: tl =>
-          let val (numStack, opStack) = popUntilLParen (numStack, opStack)
-          in loopParens (tl, numStack, opStack)
-          end
-      | L.EOF :: _ =>
-          let val t = moveOpsToNumStack (numStack, opStack)
-          in List.rev t
-          end
-      | [] => raise Size
-      | _ => raise Size
-
-    and loop (tokens, numStack, opStack) =
+    fun loop (tokens, numStack, opStack) =
       case tokens of
         L.INT num :: tl => loop (tl, L.INT num :: numStack, opStack)
       | L.ASTERISK :: tl =>
-          loopTimesDiv (L.ASTERISK, numStack, opStack, tl, loop)
-      | L.SLASH :: tl => loopTimesDiv (L.SLASH, numStack, opStack, tl, loop)
-      | L.PLUS :: tl => loopPlusMinus (L.PLUS, numStack, opStack, tl, loop)
-      | L.MINUS :: tl => loopPlusMinus (L.MINUS, numStack, opStack, tl, loop)
-      | L.L_PAREN :: tl => loopParens (tl, numStack, L.L_PAREN :: opStack)
-      | L.EOF :: _ =>
-          let val t = moveOpsToNumStack (numStack, opStack)
-          in List.rev t
+          let val opStack = L.ASTERISK :: opStack
+          in loop (tl, numStack, opStack)
           end
-      | [] => raise Size
-      | _ => raise Size
+      | L.SLASH :: tl =>
+          let val opStack = L.SLASH :: opStack
+          in loop (tl, numStack, opStack)
+          end
+      | L.PLUS :: tl =>
+          let
+            val (numStack, opStack) = whenPlusOrMinusToken (numStack, opStack)
+            val opStack = L.PLUS :: opStack
+          in
+            loop (tl, numStack, opStack)
+          end
+      | L.MINUS :: tl =>
+          let
+            val (numStack, opStack) = whenPlusOrMinusToken (numStack, opStack)
+            val opStack = L.MINUS :: opStack
+          in
+            loop (tl, numStack, opStack)
+          end
+      | L.L_PAREN :: tl => loop (tl, numStack, L.L_PAREN :: opStack)
+      | L.R_PAREN :: tl =>
+          let val (numStack, opStack) = popToLParen (numStack, opStack)
+          in loop (tl, numStack, opStack)
+          end
+      | L.EOF :: _ => (finishYard (numStack, opStack), [])
+      | [] => (finishYard (numStack, opStack), [])
+      | _ :: _ => (finishYard (numStack, opStack), tokens)
   in
     fun yard tokens = loop (tokens, [], [])
   end
 end
+
+(* for repl *)
+fun yard str =
+  let
+    val tokens = Lexer.getTokens str
+    val (result, remaining) = Yard.yard tokens
+  in
+    result
+  end
