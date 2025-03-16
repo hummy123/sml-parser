@@ -72,6 +72,48 @@ struct
               else
                 (fnStack, valStack)
             end
+        | L.MINUS :: fntl =>
+            let
+              val topPower = optPower MINUS
+            in
+              if topPower > newPower then
+                case valStack of
+                  b :: a :: valtl =>
+                    let val result = BINARY (a, MINUS, b)
+                    in reduce (opt, fntl, result :: valtl)
+                    end
+                | _ => (print "reduce valStack case\n"; raise Size)
+              else
+                (fnStack, valStack)
+            end
+        | L.ASTERISK :: fntl =>
+            let
+              val topPower = optPower TIMES
+            in
+              if topPower > newPower then
+                case valStack of
+                  b :: a :: valtl =>
+                    let val result = BINARY (a, TIMES, b)
+                    in reduce (opt, fntl, result :: valtl)
+                    end
+                | _ => (print "reduce valStack case\n"; raise Size)
+              else
+                (fnStack, valStack)
+            end
+        | L.SLASH :: fntl =>
+            let
+              val topPower = optPower DIV
+            in
+              if topPower > newPower then
+                case valStack of
+                  b :: a :: valtl =>
+                    let val result = BINARY (a, DIV, b)
+                    in reduce (opt, fntl, result :: valtl)
+                    end
+                | _ => (print "reduce valStack case\n"; raise Size)
+              else
+                (fnStack, valStack)
+            end
         | hd :: tl =>
             ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "\n")
             ; raise Size
@@ -88,9 +130,38 @@ struct
                 let val result = BINARY (a, PLUS, b) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
+            | _ => (print "unexpected case in yard.sml 91\n"; raise Size)
+          end
+      | L.MINUS :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, MINUS, b) :: valtl
+                in reduceUntilEmpty (fntl, result)
+                end
+            | _ => (print "unexpected case in yard.sml 99\n"; raise Size)
+          end
+      | L.ASTERISK :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, TIMES, b) :: valtl
+                in reduceUntilEmpty (fntl, result)
+                end
+            | _ => (print "unexpected case in yard.sml 107\n"; raise Size)
+          end
+      | L.SLASH :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, DIV, b) :: valtl
+                in reduceUntilEmpty (fntl, result)
+                end
+            | _ => (print "unexpected case in yard.sml 115\n"; raise Size)
           end
       | [L.EOF] => valStack
       | [] => valStack
+      | hd :: tl => (print "unexpected token in reduceUntilEmpty\n"; raise Size)
 
     fun binary (tokens, fnStack, valStack) =
       case tokens of
@@ -98,6 +169,27 @@ struct
           let
             val (fnStack, valStack) = reduce (PLUS, fnStack, valStack)
             val fnStack = L.PLUS :: fnStack
+          in
+            unary (tl, fnStack, valStack)
+          end
+      | L.MINUS :: tl =>
+          let
+            val (fnStack, valStack) = reduce (PLUS, fnStack, valStack)
+            val fnStack = L.MINUS :: fnStack
+          in
+            unary (tl, fnStack, valStack)
+          end
+      | L.ASTERISK :: tl =>
+          let
+            val (fnStack, valStack) = reduce (TIMES, fnStack, valStack)
+            val fnStack = L.ASTERISK :: fnStack
+          in
+            unary (tl, fnStack, valStack)
+          end
+      | L.SLASH :: tl =>
+          let
+            val (fnStack, valStack) = reduce (DIV, fnStack, valStack)
+            val fnStack = L.SLASH :: fnStack
           in
             unary (tl, fnStack, valStack)
           end
