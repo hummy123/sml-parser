@@ -42,27 +42,34 @@ struct
   structure L = Lexer
 
   local
-    (*
-      fun toIntLiteral num = LITERAL (INT_LITERAL num)
-        | toIntLiteral _ = raise Empty
-    
-      fun loopRpn (yardList, ast) =
-        case yardList of
-          L.INT a :: L.INT b :: tl => 
-        | opt :: tl =>
-            let in
-              case newNumStack of
-                L.INT b :: L.INT a :: tl =>
-    
-      fun rpnToParseTree lst =
-        case lst of
-          [L.INT num] => toIntLiteral num
-        | L.INT a :: L.INT b :: 
-          L.INT num1 :: tl => 
-          let
-            val num1 = toIntLiteral num
-          in
-            *)
+    fun toIntLiteral num =
+      LITERAL (INT_LITERAL num)
+
+    fun makeBin (nodeStack, opt) =
+      case nodeStack of
+        r :: l :: tl => BINARY (l, opt, r) :: tl
+      | _ => raise Match
+
+    fun loopRpn (nodeStack, yardList) =
+      case yardList of
+        L.INT num :: tl => loopRpn (toIntLiteral num :: nodeStack, tl)
+      | L.ASTERISK :: tl =>
+          let val nodeStack = makeBin (nodeStack, TIMES)
+          in loopRpn (nodeStack, tl)
+          end
+      | L.SLASH :: tl =>
+          let val nodeStack = makeBin (nodeStack, DIV)
+          in loopRpn (nodeStack, tl)
+          end
+      | L.PLUS :: tl =>
+          let val nodeStack = makeBin (nodeStack, PLUS)
+          in loopRpn (nodeStack, tl)
+          end
+      | L.MINUS :: tl =>
+          let val nodeStack = makeBin (nodeStack, MINUS)
+          in loopRpn (nodeStack, tl)
+          end
+      | [] => List.hd nodeStack
 
     fun whenPlusOrMinusToken (numStack, opStack) =
       case opStack of
@@ -81,7 +88,7 @@ struct
     fun finishYard (numStack, opStack) =
       case opStack of
         hd :: tl => finishYard (hd :: numStack, tl)
-      | [] => List.rev numStack
+      | [] => loopRpn ([], List.rev numStack)
 
     fun loop (tokens, numStack, opStack) =
       case tokens of
@@ -120,12 +127,3 @@ struct
     fun yard tokens = loop (tokens, [], [])
   end
 end
-
-(* for repl *)
-fun yard str =
-  let
-    val tokens = Lexer.getTokens str
-    val (result, remaining) = Yard.yard tokens
-  in
-    result
-  end
