@@ -133,7 +133,15 @@ struct
 
     fun reduceParens (fnStack, valStack) =
       case fnStack of
-        L.PLUS :: fntl =>
+        L.L_PAREN :: fntl =>
+          let in
+            case valStack of
+              hd :: valtl =>
+                let val result = GROUP hd :: valtl
+                in (fntl, result)
+                end
+          end
+      | L.PLUS :: fntl =>
           let in
             case valStack of
               b :: a :: valtl =>
@@ -142,13 +150,41 @@ struct
                 end
             | _ => raise Fail "reduceParens plus"
           end
-      | L.L_PAREN :: fntl =>
+      | L.MINUS :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, MINUS, b)
+                in reduceParens (fntl, result :: valtl)
+                end
+            | _ => raise Fail "reduceParens minus"
+          end
+      | L.ASTERISK :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, TIMES, b)
+                in reduceParens (fntl, result :: valtl)
+                end
+            | _ => raise Fail "reduceParens times"
+          end
+      | L.SLASH :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, DIV, b)
+                in reduceParens (fntl, result :: valtl)
+                end
+            | _ => raise Fail "reduceParens div"
+          end
+      | L.TILDE :: fntl =>
           let in
             case valStack of
               hd :: valtl =>
-                let val result = GROUP hd :: valtl
-                in (fntl, result)
+                let val result = UNARY (NEGATE_INT, hd)
+                in reduceParens (fntl, result :: valtl)
                 end
+            | _ => raise Fail "reduceParens tilde"
           end
       | [L.EOF] => (fnStack, valStack)
       | [] => (fnStack, valStack)
