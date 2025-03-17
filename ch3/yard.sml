@@ -114,6 +114,15 @@ struct
               else
                 (fnStack, valStack)
             end
+        | L.TILDE :: fntl =>
+            let in
+              case valStack of
+                hd :: valtl =>
+                  let val result = UNARY (NEGATE_INT, hd)
+                  in reduce (opt, fntl, result :: valtl)
+                  end
+              | _ => (print "reduce valStack case\n"; raise Size)
+            end
         | hd :: tl =>
             ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "\n")
             ; raise Size
@@ -158,6 +167,15 @@ struct
                 in reduceUntilEmpty (fntl, result)
                 end
             | _ => (print "unexpected case in yard.sml 115\n"; raise Size)
+          end
+      | L.TILDE :: fntl =>
+          let in
+            case valStack of
+              hd :: valtl =>
+                let val result = UNARY (NEGATE_INT, hd) :: valtl
+                in reduceUntilEmpty (fntl, result)
+                end
+            | _ => (print "unexpected case in yard.sml 169\n"; raise Size)
           end
       | [L.EOF] => valStack
       | [] => valStack
@@ -229,14 +247,12 @@ struct
           in
             unary (tl, fnStack, valStack)
           end
+          *)
       (* operators *)
-         | L.TILDE :: tl => 
-           let
-             val fnStack = L.TILDE :: fnStack
-           in
-             unary (tl, fnStack, valStack)
-           end
-           *)
+      | L.TILDE :: tl =>
+          let val fnStack = L.TILDE :: fnStack
+          in unary (tl, fnStack, valStack)
+          end
       | [] => (fnStack, valStack)
       | [L.EOF] => (fnStack, valStack)
       | _ => (print "unexpected token during unary stage"; raise Size)
