@@ -68,7 +68,7 @@ struct
                     let val result = BINARY (a, PLUS, b)
                     in reduce (opt, fntl, result :: valtl)
                     end
-                | _ => (print "reduce valStack case\n"; raise Size)
+                | _ => raise Fail "reduce valStack case\n"
               else
                 (fnStack, valStack)
             end
@@ -82,7 +82,7 @@ struct
                     let val result = BINARY (a, MINUS, b)
                     in reduce (opt, fntl, result :: valtl)
                     end
-                | _ => (print "reduce valStack case\n"; raise Size)
+                | _ => raise Fail "reduce valStack case\n"
               else
                 (fnStack, valStack)
             end
@@ -96,7 +96,7 @@ struct
                     let val result = BINARY (a, TIMES, b)
                     in reduce (opt, fntl, result :: valtl)
                     end
-                | _ => (print "reduce valStack case\n"; raise Size)
+                | _ => raise Fail "reduce valStack case\n"
               else
                 (fnStack, valStack)
             end
@@ -110,7 +110,7 @@ struct
                     let val result = BINARY (a, DIV, b)
                     in reduce (opt, fntl, result :: valtl)
                     end
-                | _ => (print "reduce valStack case\n"; raise Size)
+                | _ => raise Fail "reduce valStack case\n"
               else
                 (fnStack, valStack)
             end
@@ -121,13 +121,11 @@ struct
                   let val result = UNARY (NEGATE_INT, hd)
                   in reduce (opt, fntl, result :: valtl)
                   end
-              | _ => (print "reduce valStack case\n"; raise Size)
+              | _ => raise Fail "reduce valStack case\n"
             end
         | L.L_PAREN :: fntl => (fnStack, valStack)
         | hd :: tl =>
-            ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "]\n")
-            ; raise Size
-            )
+            raise Fail ("reduce fnStack case [" ^ L.tokenToString hd ^ "]\n")
         | [] => (fnStack, valStack)
       end
 
@@ -140,6 +138,7 @@ struct
                 let val result = GROUP hd :: valtl
                 in (fntl, result)
                 end
+            | _ => raise Fail "reduceParens L_PAREN"
           end
       | L.PLUS :: fntl =>
           let in
@@ -199,7 +198,7 @@ struct
                 let val result = BINARY (a, PLUS, b) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
-            | _ => (print "unexpected case in yard.sml 91\n"; raise Size)
+            | _ => raise Fail "unexpected case in yard.sml 91\n"
           end
       | L.MINUS :: fntl =>
           let in
@@ -208,7 +207,7 @@ struct
                 let val result = BINARY (a, MINUS, b) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
-            | _ => (print "unexpected case in yard.sml 99\n"; raise Size)
+            | _ => raise Fail "unexpected case in yard.sml 99\n"
           end
       | L.ASTERISK :: fntl =>
           let in
@@ -217,7 +216,7 @@ struct
                 let val result = BINARY (a, TIMES, b) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
-            | _ => (print "unexpected case in yard.sml 107\n"; raise Size)
+            | _ => raise Fail "unexpected case in yard.sml 107\n"
           end
       | L.SLASH :: fntl =>
           let in
@@ -226,7 +225,7 @@ struct
                 let val result = BINARY (a, DIV, b) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
-            | _ => (print "unexpected case in yard.sml 115\n"; raise Size)
+            | _ => raise Fail "unexpected case in yard.sml 115\n"
           end
       | L.TILDE :: fntl =>
           let in
@@ -235,11 +234,11 @@ struct
                 let val result = UNARY (NEGATE_INT, hd) :: valtl
                 in reduceUntilEmpty (fntl, result)
                 end
-            | _ => (print "unexpected case in yard.sml 169\n"; raise Size)
+            | _ => raise Fail "unexpected case in yard.sml 169\n"
           end
       | [L.EOF] => valStack
       | [] => valStack
-      | hd :: tl => (print "unexpected token in reduceUntilEmpty\n"; raise Size)
+      | hd :: tl => raise Fail "unexpected token in reduceUntilEmpty\n"
 
     fun binary (tokens, fnStack, valStack) =
       case tokens of
@@ -275,9 +274,9 @@ struct
           let val (fnStack, valStack) = reduceParens (fnStack, valStack)
           in binary (tl, fnStack, valStack)
           end
-      | [] => (fnStack, valStack)
-      | [L.EOF] => (fnStack, valStack)
-      | _ => (print "unexpected binary\n"; raise Size)
+      | [] => (fnStack, valStack, tokens)
+      | [L.EOF] => (fnStack, valStack, tokens)
+      | _ => raise Fail "unexpected binary\n"
 
     and unary (tokens, fnStack, valStack) =
       case tokens of
@@ -303,30 +302,22 @@ struct
           in
             binary (tl, fnStack, valStack)
           end
-      (* L_PAREN for grouping *)
-      (*
-      | L.L_PAREN :: tl =>
-          let
-            val fnStack = L.PAREN :: fnStack
-          in
-            unary (tl, fnStack, valStack)
-          end
-          *)
       (* operators *)
       | L.TILDE :: tl =>
           let val fnStack = L.TILDE :: fnStack
           in unary (tl, fnStack, valStack)
           end
+      (* L_PAREN for grouping *)
       | L.L_PAREN :: tl =>
           let val fnStack = L.L_PAREN :: fnStack
           in unary (tl, fnStack, valStack)
           end
-      | [] => (fnStack, valStack)
-      | [L.EOF] => (fnStack, valStack)
-      | _ => (print "unexpected token during unary stage"; raise Size)
+      | [] => (fnStack, valStack, tokens)
+      | [L.EOF] => (fnStack, valStack, tokens)
+      | _ => raise Fail "unexpected token during unary stage"
   in
     fun dblE tokens =
-      let val (fnStack, valStack) = unary (tokens, [], [])
+      let val (fnStack, valStack, remainingTokens) = unary (tokens, [], [])
       in reduceUntilEmpty (fnStack, valStack)
       end
   end
