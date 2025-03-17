@@ -123,12 +123,36 @@ struct
                   end
               | _ => (print "reduce valStack case\n"; raise Size)
             end
+        | L.L_PAREN :: fntl => (fnStack, valStack)
         | hd :: tl =>
-            ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "\n")
+            ( print ("reduce fnStack case [" ^ L.tokenToString hd ^ "]\n")
             ; raise Size
             )
         | [] => (fnStack, valStack)
       end
+
+    fun reduceParens (fnStack, valStack) =
+      case fnStack of
+        L.PLUS :: fntl =>
+          let in
+            case valStack of
+              b :: a :: valtl =>
+                let val result = BINARY (a, PLUS, b)
+                in reduceParens (fntl, result :: valtl)
+                end
+            | _ => raise Fail "reduceParens plus"
+          end
+      | L.L_PAREN :: fntl =>
+          let in
+            case valStack of
+              hd :: valtl =>
+                let val result = GROUP hd :: valtl
+                in (fntl, result)
+                end
+          end
+      | [L.EOF] => (fnStack, valStack)
+      | [] => (fnStack, valStack)
+      | _ => raise Fail "reduceParens wildcard"
 
     fun reduceUntilEmpty (fnStack, valStack) =
       case fnStack of
@@ -211,6 +235,10 @@ struct
           in
             unary (tl, fnStack, valStack)
           end
+      | L.R_PAREN :: tl =>
+          let val (fnStack, valStack) = reduceParens (fnStack, valStack)
+          in binary (tl, fnStack, valStack)
+          end
       | [] => (fnStack, valStack)
       | [L.EOF] => (fnStack, valStack)
       | _ => (print "unexpected binary\n"; raise Size)
@@ -251,6 +279,10 @@ struct
       (* operators *)
       | L.TILDE :: tl =>
           let val fnStack = L.TILDE :: fnStack
+          in unary (tl, fnStack, valStack)
+          end
+      | L.L_PAREN :: tl =>
+          let val fnStack = L.L_PAREN :: fnStack
           in unary (tl, fnStack, valStack)
           end
       | [] => (fnStack, valStack)
