@@ -29,6 +29,7 @@ struct
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
+  | SEQ_EXP of exp list
   | IF_THEN_ELSE of exp * exp * exp
   | RECORD_EXP of {fieldName: string, fieldValue: exp} list
   | SELECT_FIELD of string * exp
@@ -323,6 +324,13 @@ struct
           in
             unary (tokens, fnStack, valStack)
           end
+      | L.LET :: tl =>
+          let
+            val (tokens, letExp) = parseLetExp tl
+            val valStack = letExp :: valStack
+          in
+            unary (tokens, fnStack, valStack)
+          end
       | hd :: _ =>
           raise Fail ("unexpected unary [ " ^ L.tokenToString hd ^ " ]")
 
@@ -400,6 +408,39 @@ struct
               parseTuple (tl, record, fieldNum + 1)
             end
         | _ => raise Fail "yard.sml line 403"
+      end
+
+    (* between "in ... end" in "let ... in ... end" *)
+    and splitLetExpTokens (expTokens, tokens, letLevel) =
+      case tokens of
+        L.END :: tl =>
+          if letLevel - 1 = 0 then (List.rev expTokens, tokens)
+          else splitLetExpTokens (L.END :: expTokens, tl, letLevel - 1)
+      | L.LET :: tl => splitLetExpTokens (L.LET :: expTokens, tl, letLevel + 1)
+      | hd :: tl => splitLetExpTokens (hd :: expTokens, tl, letLevel)
+      | [] => raise Fail "splitLetExpTokens empty"
+
+    and advanceLetEndings tokens =
+      case tokens of
+        L.END :: tl => advanceLetEndings tl
+      | _ => tokens
+
+    and parseLetExp tokens =
+      let
+        val letDecs = []
+      in
+        case tokens of
+          L.IN :: tl =>
+            let
+              val (expTokens, tokens) = splitLetExpTokens ([], tl, 1)
+              val (fnStack, valStack, _) = unary (expTokens, [], [])
+              val letExp = reduceUntilEmpty (fnStack, valStack)
+              val result = LET_EXPR (letDecs, List.hd letExp)
+              val tokens = advanceLetEndings tokens
+            in
+              (tokens, result)
+            end
+        | _ => raise Fail "parseLetExp did not encounter 'in'"
       end
   in
     fun dblE tokens =
