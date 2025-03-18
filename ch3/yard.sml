@@ -270,10 +270,6 @@ struct
           in
             unary (tl, fnStack, valStack)
           end
-      | L.R_PAREN :: tl =>
-          let val (fnStack, valStack) = reduceParens (fnStack, valStack)
-          in binary (tl, fnStack, valStack)
-          end
       | [] => (fnStack, valStack, tokens)
       | [L.EOF] => (fnStack, valStack, tokens)
       | hd :: _ =>
@@ -308,11 +304,6 @@ struct
           let val fnStack = L.TILDE :: fnStack
           in unary (tl, fnStack, valStack)
           end
-      (* L_PAREN for grouping *)
-      | L.L_PAREN :: tl =>
-          let val fnStack = L.L_PAREN :: fnStack
-          in unary (tl, fnStack, valStack)
-          end
       | [] => (fnStack, valStack, tokens)
       | [L.EOF] => (fnStack, valStack, tokens)
 
@@ -324,10 +315,18 @@ struct
           in
             unary (tokens, fnStack, valStack)
           end
+      (* parse tuple or group-expression *)
+      | L.L_PAREN :: tl =>
+          let
+            val (tokens, tuple) = parseTuple (tl, [], 1)
+            val valStack = tuple :: valStack
+          in
+            unary (tokens, fnStack, valStack)
+          end
       | hd :: _ =>
           raise Fail ("unexpected unary [ " ^ L.tokenToString hd ^ " ]")
 
-    and splitTokens (expTokens, tokens, braceLevel) =
+    and splitRecordTokens (expTokens, tokens, braceLevel) =
       case tokens of
         L.COMMA :: tl => (List.rev expTokens, tokens)
 
@@ -335,19 +334,30 @@ struct
        * so we keep track of how many brace pairs we have seen 
        * as we want to parse the whole record *)
       | L.L_BRACE :: tl =>
-          splitTokens (L.L_BRACE :: expTokens, tl, braceLevel + 1)
+          splitRecordTokens (L.L_BRACE :: expTokens, tl, braceLevel + 1)
       | L.R_BRACE :: tl =>
           if braceLevel - 1 = 0 then (List.rev expTokens, tokens)
-          else splitTokens (L.R_BRACE :: expTokens, tl, braceLevel - 1)
+          else splitRecordTokens (L.R_BRACE :: expTokens, tl, braceLevel - 1)
 
-      | hd :: tl => splitTokens (hd :: expTokens, tl, braceLevel)
+      | hd :: tl => splitRecordTokens (hd :: expTokens, tl, braceLevel)
+      | [] => (List.rev expTokens, tokens)
+
+    and splitTupleTokens (expTokens, tokens, parenLevel) =
+      case tokens of
+        L.COMMA :: tl => (List.rev expTokens, tokens)
+      | L.L_PAREN :: tl =>
+          splitTupleTokens (L.L_PAREN :: expTokens, tl, parenLevel + 1)
+      | L.R_PAREN :: tl =>
+          if parenLevel - 1 = 0 then (List.rev expTokens, tokens)
+          else splitTupleTokens (L.R_PAREN :: expTokens, tl, parenLevel - 1)
+      | hd :: tl => splitTupleTokens (hd :: expTokens, tl, parenLevel)
       | [] => (List.rev expTokens, tokens)
 
     and parseRecord (tokens, record) =
       case tokens of
         L.ID fieldName :: L.EQUALS :: tl =>
           let
-            val (expTokens, tokens) = splitTokens ([], tl, 1)
+            val (expTokens, tokens) = splitRecordTokens ([], tl, 1)
             val (fnStack, valStack, _) = unary (expTokens, [], [])
             val expresion = reduceUntilEmpty (fnStack, valStack)
             val fieldValue = List.hd expresion
@@ -360,6 +370,37 @@ struct
             | _ => raise Fail "yard.sml 340"
           end
       | _ => raise Fail "yard.sml 342"
+
+    and parseTuple (tokens, record, fieldNum) =
+      let
+        val (expTokens, tokens) = splitTupleTokens ([], tokens, 1)
+        val (fnStack, valStack, _) = unary (expTokens, [], [])
+        val expresion = reduceUntilEmpty (fnStack, valStack)
+      in
+        case tokens of
+          L.R_PAREN :: tl =>
+            if fieldNum = 1 then
+              (tl, GROUP (List.hd expresion))
+            else
+              let
+                val record =
+                  { fieldName = Int.toString fieldNum
+                  , fieldValue = List.hd expresion
+                  } :: record
+              in
+                (tl, RECORD_EXP record)
+              end
+        | L.COMMA :: tl =>
+            let
+              val record =
+                { fieldName = Int.toString fieldNum
+                , fieldValue = List.hd expresion
+                } :: record
+            in
+              parseTuple (tl, record, fieldNum + 1)
+            end
+        | _ => raise Fail "yard.sml line 403"
+      end
   in
     fun dblE tokens =
       let val (fnStack, valStack, remainingTokens) = unary (tokens, [], [])
