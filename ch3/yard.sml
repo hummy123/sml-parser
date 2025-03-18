@@ -425,9 +425,61 @@ struct
         L.END :: tl => advanceLetEndings tl
       | _ => tokens
 
+    and splitValTokens (expTokens, tokens, openLevel) =
+      case tokens of
+      (* slight trickiness: we are looking for another 'dec' or 'L.in' 
+      * so we know when to terminate the splitting.
+      * However, it's possible for the expression associated with this val
+      * to be something like:
+      * 'val a = let val b = ...'
+      * in which case we don't want to terminate after seing the first
+      * declaration token, as the second 'val' is contained in this 'val'.
+      * So, we keep track of an 'openLevel' counter, 
+      * increment it when we see a 'let' and decrement it when we see an 'end'.
+      * If 'openLevel' is 0, then we can terminate; otherwise, we have to keep
+      * parsing through.
+      * Question: do we need to consider other types of token
+      * s except 'let', 'in' and 'end" ?
+      * *)
+        L.LET :: tl => splitValTokens (L.LET :: expTokens, tl, openLevel + 1)
+      | L.END :: tl => splitValTokens (L.END :: expTokens, tl, openLevel - 1)
+
+      (* tokens we may want to terminate on *)
+      | L.VAL :: tl =>
+          if openLevel = 0 then (List.rev expTokens, tokens)
+          else splitValTokens (L.VAL :: expTokens, tl, openLevel)
+      | L.IN :: tl =>
+          if openLevel = 0 then (List.rev expTokens, tokens)
+          else splitValTokens (L.IN :: expTokens, tl, openLevel)
+      | L.TYPE :: tl =>
+          if openLevel = 0 then (List.rev expTokens, tokens)
+          else splitValTokens (L.TYPE :: expTokens, tl, openLevel)
+      | L.FUN :: tl =>
+          if openLevel = 0 then (List.rev expTokens, tokens)
+          else splitValTokens (L.FUN :: expTokens, tl, openLevel)
+
+      | hd :: tl => splitValTokens (hd :: expTokens, tl, openLevel)
+      | [] => raise Fail "yard.sml 462 empty"
+
+    and getDecList (tokens, decs) =
+      case tokens of
+        L.IN :: tl => (List.rev decs, tokens)
+      | L.VAL :: L.ID valName :: L.EQUALS :: tl =>
+          let
+            val (expTokens, tokens) = splitValTokens ([], tl, 0)
+            val (fnStack, valStack, _) = unary (expTokens, [], [])
+            val exp = reduceUntilEmpty (fnStack, valStack)
+            val valDec = VAL_DEC (valName, List.hd exp)
+            val decs = valDec :: decs
+          in
+            getDecList (tokens, decs)
+          end
+      (* todo: parse other kinds of decs as well, including types and functions. *)
+      | _ => raise Fail "yard.sml 475"
+
     and parseLetExp tokens =
       let
-        val letDecs = []
+        val (letDecs, tokens) = getDecList (tokens, [])
       in
         case tokens of
           L.IN :: tl =>
