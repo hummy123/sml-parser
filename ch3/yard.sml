@@ -276,7 +276,8 @@ struct
           end
       | [] => (fnStack, valStack, tokens)
       | [L.EOF] => (fnStack, valStack, tokens)
-      | _ => raise Fail "unexpected binary\n"
+      | hd :: _ =>
+          raise Fail ("unexpected binary [ " ^ L.tokenToString hd ^ " ]")
 
     and unary (tokens, fnStack, valStack) =
       case tokens of
@@ -314,7 +315,51 @@ struct
           end
       | [] => (fnStack, valStack, tokens)
       | [L.EOF] => (fnStack, valStack, tokens)
-      | _ => raise Fail "unexpected token during unary stage"
+
+      (* parse record *)
+      | L.L_BRACE :: tl =>
+          let
+            val (tokens, record) = parseRecord (tl, [])
+            val valStack = record :: valStack
+          in
+            unary (tokens, fnStack, valStack)
+          end
+      | hd :: _ =>
+          raise Fail ("unexpected unary [ " ^ L.tokenToString hd ^ " ]")
+
+    and splitTokens (expTokens, tokens, braceLevel) =
+      case tokens of
+        L.COMMA :: tl => (List.rev expTokens, tokens)
+
+      (* we might have nested records, where record is inside another record
+       * so we keep track of how many brace pairs we have seen 
+       * as we want to parse the whole record *)
+      | L.L_BRACE :: tl =>
+          splitTokens (L.L_BRACE :: expTokens, tl, braceLevel + 1)
+      | L.R_BRACE :: tl =>
+          if braceLevel - 1 = 0 then (List.rev expTokens, tokens)
+          else splitTokens (L.R_BRACE :: expTokens, tl, braceLevel - 1)
+
+      | hd :: tl => splitTokens (hd :: expTokens, tl, braceLevel)
+      | [] => (List.rev expTokens, tokens)
+
+    and parseRecord (tokens, record) =
+      case tokens of
+        L.ID fieldName :: L.EQUALS :: tl =>
+          let
+            val (expTokens, tokens) = splitTokens ([], tl, 1)
+            val (fnStack, valStack, _) = unary (expTokens, [], [])
+            val expresion = reduceUntilEmpty (fnStack, valStack)
+            val fieldValue = List.hd expresion
+            val record =
+              {fieldName = fieldName, fieldValue = fieldValue} :: record
+          in
+            case tokens of
+              L.R_BRACE :: tl => (tl, RECORD_EXP record)
+            | L.COMMA :: tl => parseRecord (tl, record)
+            | _ => raise Fail "yard.sml 340"
+          end
+      | _ => raise Fail "yard.sml 342"
   in
     fun dblE tokens =
       let val (fnStack, valStack, remainingTokens) = unary (tokens, [], [])
