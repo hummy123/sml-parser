@@ -4,6 +4,7 @@ sig
     INT of int
   | ID of string
   | STRING of string
+  | BOOL of bool
 
   (* reserved words *)
   | LET
@@ -60,6 +61,7 @@ struct
     INT of int
   | ID of string
   | STRING of string
+  | BOOL of bool
 
   (* reserved words *)
   | LET
@@ -107,6 +109,7 @@ struct
       INT num => "INT(" ^ Int.toString num ^ ")"
     | ID id => "ID(" ^ id ^ ")"
     | STRING str => "STRING(" ^ str ^ ")"
+    | BOOL b => "BOOL(" ^ Bool.toString b ^ ")"
 
     (* reserved words *)
     | LET => "let"
@@ -162,6 +165,8 @@ struct
     | "then" => THEN
     | "else" => ELSE
     | "of" => OF
+    | "true" => BOOL true
+    | "false" => BOOL false
     | _ => ID str
 
   fun getPunct str =

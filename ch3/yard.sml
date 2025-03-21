@@ -1,6 +1,9 @@
 structure Yard =
 struct
-  datatype literal = INT_LITERAL of int | STRING_LITERAL of string
+  datatype literal =
+    INT_LITERAL of int
+  | STRING_LITERAL of string
+  | BOOL_LITERAL of bool
 
   datatype opt =
   (* highest precedence *)
@@ -45,8 +48,12 @@ struct
   local
     fun getStringLiteral s =
       LITERAL (STRING_LITERAL s)
+
     fun getIntLiteral i =
       LITERAL (INT_LITERAL i)
+
+    fun getBoolLiteral b =
+      LITERAL (BOOL_LITERAL b)
 
     fun optPower (TIMES) = 5
       | optPower (DIV) = 5
@@ -289,6 +296,13 @@ struct
       | L.INT num :: tl =>
           let
             val lit = getIntLiteral num
+            val valStack = lit :: valStack
+          in
+            binary (tl, fnStack, valStack)
+          end
+      | L.BOOL b :: tl =>
+          let
+            val lit = getBoolLiteral b
             val valStack = lit :: valStack
           in
             binary (tl, fnStack, valStack)
