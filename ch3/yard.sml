@@ -68,7 +68,7 @@ struct
     | [] => true
     | _ => raise Fail "67"
 
-  fun reduce (fnStack, valStack) =
+  fun helpReduce (fnStack, valStack) =
     case fnStack of
       L.ID funName :: ftl =>
         (* assume ID is function taking two values for now *)
@@ -76,13 +76,22 @@ struct
           case valStack of
             r :: l :: vtl =>
               let val result = FUNCTION_CALL (funName, [l, r]) :: vtl
-              in reduce (ftl, result)
+              in helpReduce (ftl, result)
               end
-          | _ => raise Fail "584"
+          | [hd] =>
+              let val result = FUNCTION_CALL (funName, [hd]) :: valStack
+              in (ftl, result)
+              end
+          | [] => raise Fail "85"
         end
     | [L.EOF] => (fnStack, valStack)
     | [] => (fnStack, valStack)
     | _ => raise Fail "586"
+
+  fun reduce (fnStack, valStack) =
+    case (fnStack, valStack) of
+      ([L.ID hd], []) => ([], [VAL_ID hd])
+    | _ => helpReduce (fnStack, valStack)
 
   fun yard (tokens, fnStack, valStack, fixMap) =
     case tokens of
@@ -115,24 +124,23 @@ struct
         in (tokens, valStack)
         end
 
-  fun helpParse (tokens, fixMap) =
+  fun parseIf (tokens, fixMap) =
     case tokens of
-      L.INFIX :: L.INT power :: L.ID name :: tl =>
-        let val fixMap = StringMap.add (name, power, fixMap)
-        in helpParse (tl, fixMap)
-        end
-    | L.IF :: tl =>
+      L.IF :: tl =>
         let
+          val () = print "IF\n"
           val (tokens, predicateVals) = yard (tl, [], [], fixMap)
         in
           case tokens of
             L.THEN :: tl =>
               let
+                val () = print "THEN\n"
                 val (tokens, thenVals) = yard (tl, [], [], fixMap)
               in
                 case tokens of
                   L.ELSE :: tl =>
                     let
+                      val () = print "ELSE\n"
                       val (tokens, elseVals) = yard (tl, [], [], fixMap)
                       val result =
                         IF_THEN_ELSE
@@ -140,14 +148,67 @@ struct
                           , List.hd thenVals
                           , List.hd elseVals
                           )
+                      val () = print "ELSE DONE\n"
                     in
-                      (tokens, [result])
+                      (tokens, result)
                     end
                 | _ => raise Fail "146: expected 'else'"
               end
-          | _ => raise Fail "124: expected 'then'"
+          | hd :: _ =>
+              raise Fail ("124: expected 'then' but got " ^ L.tokenToString hd)
         end
-    | _ => yard (tokens, [], [], fixMap)
+    | _ =>
+        let
+          val (tokens, exp) = yard (tokens, [], [], fixMap)
+        in
+          case exp of
+            hd :: _ => (tokens, hd)
+          | _ => parseLet (tokens, fixMap)
+        end
+
+  and parseLetDecs (tokens, fixMap, acc) =
+    case tokens of
+      L.VAL :: L.ID valName :: L.EQUALS :: tl =>
+        let
+          val (tokens, exp) = parseIf (tl, fixMap)
+          val acc = VAL_DEC (valName, exp) :: acc
+        in
+          parseLetDecs (tokens, fixMap, acc)
+        end
+    | L.EOF :: tl => (tokens, List.rev acc)
+    | _ => (tokens, List.rev acc)
+
+  and parseLet (tokens, fixMap) =
+    case tokens of
+      L.LET :: tl =>
+        let
+          val (tokens, decs) = parseLetDecs (tl, fixMap, [])
+        in
+          case tokens of
+            L.IN :: tl =>
+              let
+                val (tokens, exp) = parseIf (tl, fixMap)
+              in
+                case tokens of
+                  L.END :: tl =>
+                    let val result = LET_EXPR (decs, exp)
+                    in (tl, result)
+                    end
+                | _ => raise Fail "166"
+              end
+          | hd :: _ => raise Fail ("168 " ^ L.tokenToString hd)
+        end
+    | _ => parseInfix (tokens, fixMap)
+
+  and parseInfix (tokens, fixMap) =
+    case tokens of
+      L.INFIX :: L.INT power :: L.ID name :: tl =>
+        let val fixMap = StringMap.add (name, power, fixMap)
+        in parseInfix (tl, fixMap)
+        end
+    | _ => parseIf (tokens, fixMap)
+
+  fun helpParse (tokens, fixMap) = parseIf (tokens, fixMap)
 
   fun parse tokens = helpParse (tokens, StringMap.empty)
 end
@@ -160,10 +221,4 @@ fun yard str =
     r
   end
 
-val result = yard
-  "\
-  \infix 1 + \
-  \infix 1 - \
-  \infix 3 * \
-  \infix 3 / \
-  \if true then 1 else 2"
+val result = yard "let val a = let val b = 3 in b end in a end"
