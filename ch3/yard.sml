@@ -5,29 +5,8 @@ struct
   | STRING_LITERAL of string
   | BOOL_LITERAL of bool
 
-  datatype opt =
-  (* highest precedence *)
-    TIMES
-  | DIV
-
-  | PLUS
-  | MINUS
-
-  | LEQ
-  | GEQ
-  | LE
-  | GE
-
-  (* lowest precedence *)
-  | ANDALSO
-  | ORELSE
-
-  datatype unary = NEGATE_INT
-
   datatype exp =
     LITERAL of literal
-  | BINARY of exp * opt * exp
-  | UNARY of unary * exp
   | GROUP of exp
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
@@ -58,15 +37,20 @@ struct
        end)
 
   fun shouldPush (newName, fnStack, fixMap) =
-    case fnStack of
-      L.ID hdName :: _ =>
-        let in
-          case (StringMap.get (hdName, fixMap), StringMap.get (newName, fixMap)) of
-            (SOME hd, SOME new) => new > hd
-          | _ => raise Fail "65"
-        end
-    | [] => true
-    | _ => raise Fail "67"
+    if newName = "andalso" orelse newName = "orelse" then
+      false
+    else
+      case fnStack of
+        L.ID hdName :: _ =>
+          let in
+            case
+              (StringMap.get (hdName, fixMap), StringMap.get (newName, fixMap))
+            of
+              (SOME hd, SOME new) => new > hd
+            | _ => raise Fail "65"
+          end
+      | [] => true
+      | _ => raise Fail "67"
 
   fun helpReduce (fnStack, valStack) =
     case fnStack of
@@ -221,4 +205,4 @@ fun yard str =
     r
   end
 
-val result = yard "let val a = let val b = 3 in b end in a end"
+val result = yard "infix 3 + infix 1 andalso infix 1 orelse 1 + 1 andalso 2 + 2 orelse 3 + 3"
