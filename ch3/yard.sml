@@ -159,6 +159,13 @@ struct
         in
           parseLetDecs (tokens, fixMap, acc)
         end
+    | L.FUN :: L.ID funName :: L.ID argName :: L.EQUALS :: tl =>
+        let
+          val (tokens, funBody) = parseIf (tl, fixMap)
+          val acc = FUN_DEC (funName, [argName], funBody) :: acc
+        in
+          parseLetDecs (tokens, fixMap, acc)
+        end
     | L.EOF :: tl => (tokens, List.rev acc)
     | _ => (tokens, List.rev acc)
 
@@ -205,4 +212,8 @@ fun yard str =
     r
   end
 
-val result = yard "infix 3 + infix 1 andalso infix 1 orelse 1 + 1 andalso 2 + 2 orelse 3 + 3"
+val result = yard
+  "infix 3 + infix 1 andalso infix 1 orelse 1 + 1 andalso 2 + 2 orelse 3 + 3"
+
+val f =
+  "infix 1 + infix 1 - infix 3 * infix 3 / let fun bar arg = 1 * 2 * 3 in 3 end"
