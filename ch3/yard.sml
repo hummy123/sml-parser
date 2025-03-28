@@ -150,6 +150,11 @@ struct
           | _ => parseLet (tokens, fixMap)
         end
 
+  and parseFunArgs (tokens, acc) =
+    case tokens of
+      L.ID argName :: tl => parseFunArgs (tl, argName :: acc)
+    | _ => (tokens, List.rev acc)
+
   and parseLetDecs (tokens, fixMap, acc) =
     case tokens of
       L.VAL :: L.ID valName :: L.EQUALS :: tl =>
@@ -159,12 +164,19 @@ struct
         in
           parseLetDecs (tokens, fixMap, acc)
         end
-    | L.FUN :: L.ID funName :: L.ID argName :: L.EQUALS :: tl =>
+    | L.FUN :: L.ID funName :: tl =>
         let
-          val (tokens, funBody) = parseIf (tl, fixMap)
-          val acc = FUN_DEC (funName, [argName], funBody) :: acc
+          val (tokens, args) = parseFunArgs (tl, [])
         in
-          parseLetDecs (tokens, fixMap, acc)
+          case tokens of
+            L.EQUALS :: tl =>
+              let
+                val (tokens, funBody) = parseIf (tl, fixMap)
+                val acc = FUN_DEC (funName, args, funBody) :: acc
+              in
+                parseLetDecs (tokens, fixMap, acc)
+              end
+          | _ => raise Fail "179"
         end
     | L.EOF :: tl => (tokens, List.rev acc)
     | _ => (tokens, List.rev acc)
@@ -216,4 +228,4 @@ val result = yard
   "infix 3 + infix 1 andalso infix 1 orelse 1 + 1 andalso 2 + 2 orelse 3 + 3"
 
 val f =
-  "infix 1 + infix 1 - infix 3 * infix 3 / let fun bar arg = 1 * 2 * 3 in 3 end"
+  "infix 1 + infix 1 - infix 3 * infix 3 / let fun bar a1 a2 a3 a4 b5 = 1 + 2 * 3 in 3 end"
