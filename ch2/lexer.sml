@@ -18,6 +18,7 @@ sig
   | THEN
   | ELSE
   | OF
+  | INFIX
 
   (* punctuation *)
   | COMMA
@@ -30,10 +31,6 @@ sig
   | L_BRACE
   | R_BRACE
   | DOT
-  | PLUS
-  | MINUS
-  | ASTERISK
-  | SLASH
   | EQUALS
   | NOT_EQUALS
   | LESS_THAN
@@ -75,6 +72,7 @@ struct
   | THEN
   | ELSE
   | OF
+  | INFIX
 
   (* punctuation *)
   | COMMA
@@ -87,10 +85,6 @@ struct
   | L_BRACE
   | R_BRACE
   | DOT
-  | PLUS
-  | MINUS
-  | ASTERISK
-  | SLASH
   | EQUALS
   | NOT_EQUALS
   | LESS_THAN
@@ -123,6 +117,7 @@ struct
     | THEN => "then"
     | ELSE => "else"
     | OF => "of"
+    | INFIX => "infix"
 
     (* punctuation *)
     | COMMA => ","
@@ -135,10 +130,6 @@ struct
     | L_BRACE => "{"
     | R_BRACE => "}"
     | DOT => "."
-    | PLUS => "+"
-    | MINUS => "-"
-    | ASTERISK => "*"
-    | SLASH => "/"
     | EQUALS => "="
     | NOT_EQUALS => "<>"
     | LESS_THAN => "<"
@@ -167,6 +158,7 @@ struct
     | "of" => OF
     | "true" => BOOL true
     | "false" => BOOL false
+    | "infix" => INFIX
     | _ => ID str
 
   fun getPunct str =
@@ -181,10 +173,10 @@ struct
     | "{" => L_BRACE
     | "}" => R_BRACE
     | "." => DOT
-    | "+" => PLUS
-    | "-" => MINUS
-    | "*" => ASTERISK
-    | "/" => SLASH
+    | "+" => ID "+"
+    | "-" => ID "-"
+    | "*" => ID "*"
+    | "/" => ID "/"
     | "=" => EQUALS
     | "<>" => NOT_EQUALS
     | "<" => LESS_THAN
