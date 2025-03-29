@@ -11,15 +11,10 @@ struct
   | VAL_ID of string
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
-  | SEQ_EXP of exp list
   | IF_THEN_ELSE of exp * exp * exp
-  | RECORD_EXP of {fieldName: string, fieldValue: exp} list
-  | SELECT_FIELD of string * exp
-  | EMPTY
 
   and dec =
-    TYPE_DEC of string * {fieldName: string, fieldValue: string} list
-  | VAL_DEC of string * exp
+    VAL_DEC of string * exp
   | FUN_DEC of string * string list * exp
 
   structure L = Lexer
@@ -140,6 +135,7 @@ struct
               end
           | hd :: _ =>
               raise Fail ("124: expected 'then' but got " ^ L.tokenToString hd)
+          | [] => raise Fail ("139: reached empty")
         end
     | _ =>
         let
@@ -200,6 +196,7 @@ struct
                 | _ => raise Fail "166"
               end
           | hd :: _ => raise Fail ("168 " ^ L.tokenToString hd)
+          | [] => raise Fail "200: reached empty"
         end
     | _ => parseInfix (tokens, fixMap)
 
