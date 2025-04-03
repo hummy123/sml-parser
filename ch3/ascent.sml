@@ -63,6 +63,11 @@ struct
         end
     | _ => ERR
 
+  fun vid tokens =
+    case tokens of
+      L.ID vid :: tl => OK (tl, VAL_ID vid)
+    | _ => ERR
+
   fun atpat tokens =
     let
       val result = ERR
@@ -87,7 +92,24 @@ struct
       | _ => raise Fail "90"
     end
 
-  fun pat tokens =
+  (* In the Definition of SML, the `pat` rule has an instance of left-recursion
+   * with the "infixed value construction" rule, which states:
+   * `pat vid pat` is an infixed value construction.
+   *
+   * We rewrite `pat` to get rid of this left-recursion.
+   *
+   * New grammar for pat:
+   * pat' ::=
+   *   | atpat
+   *   | (op) longvid atpat
+   *   | (op) vid (:ty) as pat'
+   *
+   * pat ::=
+   *   | pat'
+   *   | pat' vid pat'
+   *   | pat' vid ty
+   * *)
+  fun pat' tokens =
     let
       val result = ERR
       (* constructed pattern *)
@@ -96,7 +118,38 @@ struct
       (* atomic *)
       val result = ifErr (atpat, tokens, result)
 
-      (* todo: infixed value construction, typed pattern, layered. *)
+    (* todo: layered. *)
+    in
+      result
+    end
+
+  fun infixedValueConstruction tokens =
+    let
+      val result = ERR
+      val pat1 = ifErr (pat', tokens, result)
+      val vid = ifOK (vid, pat1)
+      val pat2 = ifOK (pat', vid)
+    in
+      case (pat1, vid, pat2) of
+        (OK (_, pat1), OK (_, VAL_ID vid), OK (tokens, pat2)) =>
+          OK (tokens, FUNCTION_CALL (vid, [pat1, pat2]))
+      | (ERR, _, _) => ERR
+      | (_, ERR, _) => ERR
+      | (_, _, ERR) => ERR
+      | _ => raise Fail "128"
+    end
+
+  fun pat tokens =
+    let
+      val result = ERR
+
+      (* infixed value construction *)
+      val result = ifErr (infixedValueConstruction, tokens, result)
+
+      (* pat' *)
+      val result = ifErr (pat', tokens, result)
+
+    (* todo: typed pattern *)
     in
       result
     end
