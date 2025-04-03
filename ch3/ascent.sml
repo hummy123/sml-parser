@@ -6,6 +6,7 @@ struct
     INT_LITERAL of int
   | STRING_LITERAL of string
   | BOOL_LITERAL of bool
+  | IGNORE_LITERAL
 
   datatype exp =
     LITERAL of literal
@@ -37,6 +38,11 @@ struct
       L.INT num :: tl => OK (tl, LITERAL (INT_LITERAL num))
     | L.STRING str :: tl => OK (tl, LITERAL (STRING_LITERAL str))
     | L.BOOL b :: tl => OK (tl, LITERAL (BOOL_LITERAL b))
+    | _ => ERR
+
+  fun wilcard tokens =
+    case tokens of
+      L.WILDCARD :: tl => OK (tl, LITERAL IGNORE_LITERAL)
     | _ => ERR
 
   fun loopLongvid (tokens, acc) =
@@ -87,10 +93,11 @@ struct
   and atpat tokens =
     let
       val result = ERR
+      val result = ifErr (wilcard, tokens, result)
       val result = ifErr (scon, tokens, result)
       val result = ifErr (longvidOrOpLongvid, tokens, result)
       val result = ifErr (parenPat, tokens, result)
-    (* todo: record, wildcard *)
+    (* todo: record *)
     in
       result
     end
