@@ -118,7 +118,7 @@ struct
           | _ => raise Fail "119: expecting comma or } when parsing record"
         end
     | L.INT label :: L.EQUALS :: tl =>
-        if label > 0 andalso label < 10 then
+        if label > 0 then
           let
             val label = Int.toString label
           in
@@ -136,20 +136,7 @@ struct
             | ERR => ERR
           end
         else
-          raise Fail "131: label must be in range 1, 2, 3, ... 9"
-    | L.INT label :: tl =>
-        if label > 0 andalso label < 10 then
-          let
-            val label = Int.toString label
-            val acc = (label, VAL_ID label) :: acc
-          in
-            case tl of
-              L.COMMA :: tl => loopRecordPat (tl, acc)
-            | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
-            | _ => raise Fail "119: expecting comma or } when parsing record"
-          end
-        else
-          raise Fail "131: label must be in range 1, 2, 3, ... 9"
+          raise Fail "131: label must be: 1, 2, 3, ..."
     | _ => ERR
 
   and startRecordPat tokens =
