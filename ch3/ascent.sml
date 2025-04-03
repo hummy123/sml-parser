@@ -69,17 +69,33 @@ struct
       L.ID vid :: tl => OK (tl, VAL_ID vid)
     | _ => ERR
 
-  fun atpat tokens =
+  fun parenPat tokens =
+    case tokens of
+      L.L_PAREN :: tl =>
+        let in
+          case startPat tl of
+            OK (tokens, pat) =>
+              let in
+                case tokens of
+                  L.R_PAREN :: tl => OK (tl, pat)
+                | _ => ERR
+              end
+          | _ => ERR
+        end
+    | _ => ERR
+
+  and atpat tokens =
     let
       val result = ERR
       val result = ifErr (scon, tokens, result)
       val result = ifErr (longvidOrOpLongvid, tokens, result)
-    (* todo: record, parenthesis-pattern, wildcard *)
+      val result = ifErr (parenPat, tokens, result)
+    (* todo: record, wildcard *)
     in
       result
     end
 
-  fun constructedPattern tokens =
+  and constructedPattern tokens =
     let
       val result = ERR
       val longvidResult = ifErr (longvidOrOpLongvid, tokens, result)
@@ -93,12 +109,12 @@ struct
       | _ => raise Fail "90"
     end
 
-  fun typedPattern (tokens, exp) =
+  and typedPattern (tokens, exp) =
     case tokens of
       L.COLON :: L.ID vid :: tl => OK (tl, TYPE_ANNOTATED (exp, vid))
     | _ => ERR
 
-  fun infixedValueConstruction (tokens, exp) =
+  and infixedValueConstruction (tokens, exp) =
     let
       val vidExp = vid tokens
       val pat2 = ifOK (pat, vidExp)
@@ -111,19 +127,15 @@ struct
       | _ => raise Fail "142"
     end
 
-  and afterPat (tokens, exp) =
-    let
-      val typedResult = typedPattern (tokens, exp)
-      val infixResult =
-        case typedResult of
-          OK (tokens, exp) => infixedValueConstruction (tokens, exp)
-        | ERR => infixedValueConstruction (tokens, exp)
-    in
-      case (typedResult, infixResult) of
-        (_, OK (tokens, exp)) => afterPat (tokens, exp)
-      | (OK (tokens, exp), _) => afterPat (tokens, exp)
-      | (_, _) => OK (tokens, exp)
-    end
+  and typedPatLoop (tokens, exp) =
+    case typedPattern (tokens, exp) of
+      OK (tokens, exp) => typedPatLoop (tokens, exp)
+    | ERR => OK (tokens, exp)
+
+  and infixLoop (tokens, exp) =
+    case infixedValueConstruction (tokens, exp) of
+      OK (tokens, exp) => infixLoop (tokens, exp)
+    | ERR => OK (tokens, exp)
 
   and pat tokens =
     let
@@ -137,12 +149,33 @@ struct
     (* todo: layered. *)
     in
       case result of
-        OK (tokens, exp) => afterPat (tokens, exp)
+        OK (tokens, exp) => infixLoop (tokens, exp)
+      | ERR => ERR
+    end
+
+  (* 'pat' function is a loop, 
+   * and because recursive descent zooms into the * smallest unit, 
+   * type annotation at end will bind to the rightmost/smallest unit 
+   * if this is made tail-recursive.
+   * However, we want the type annotation to bind to the whole pattern.
+   * So, we use the stack which lets us remember when this pattern started
+   * and will let us place the type annotation for the whole pattern 
+   * because of that. *)
+  and startPat tokens =
+    let
+      val result = pat tokens
+    in
+      case result of
+        OK (tokens, exp) => typedPatLoop (tokens, exp)
       | ERR => ERR
     end
 end
 
 fun parse str =
-  let val tokens = Lexer.getTokens str
-  in Ascent.pat tokens
+  let
+    val tokens = Lexer.getTokens str
+  in
+    case Ascent.startPat tokens of
+      Ascent.OK (_, result) => result
+    | _ => raise Fail "145"
   end
