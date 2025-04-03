@@ -14,6 +14,7 @@ struct
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
   | IF_THEN_ELSE of exp * exp * exp
+  | TYPE_ANNOTATED of exp * string
 
   and dec =
     VAL_DEC of string * exp
@@ -92,24 +93,39 @@ struct
       | _ => raise Fail "90"
     end
 
-  (* In the Definition of SML, the `pat` rule has an instance of left-recursion
-   * with the "infixed value construction" rule, which states:
-   * `pat vid pat` is an infixed value construction.
-   *
-   * We rewrite `pat` to get rid of this left-recursion.
-   *
-   * New grammar for pat:
-   * pat' ::=
-   *   | atpat
-   *   | (op) longvid atpat
-   *   | (op) vid (:ty) as pat'
-   *
-   * pat ::=
-   *   | pat'
-   *   | pat' vid pat'
-   *   | pat' vid ty
-   * *)
-  fun pat' tokens =
+  fun typedPattern (tokens, exp) =
+    case tokens of
+      L.COLON :: L.ID vid :: tl => OK (tl, TYPE_ANNOTATED (exp, vid))
+    | _ => ERR
+
+  fun infixedValueConstruction (tokens, exp) =
+    let
+      val vidExp = vid tokens
+      val pat2 = ifOK (pat, vidExp)
+    in
+      case (vidExp, pat2) of
+        (OK (_, VAL_ID vid), OK (tokens, pat2)) =>
+          OK (tokens, FUNCTION_CALL (vid, [exp, pat2]))
+      | (ERR, _) => ERR
+      | (_, ERR) => ERR
+      | _ => raise Fail "142"
+    end
+
+  and afterPat (tokens, exp) =
+    let
+      val typedResult = typedPattern (tokens, exp)
+      val infixResult =
+        case typedResult of
+          OK (tokens, exp) => infixedValueConstruction (tokens, exp)
+        | ERR => infixedValueConstruction (tokens, exp)
+    in
+      case (typedResult, infixResult) of
+        (_, OK (tokens, exp)) => afterPat (tokens, exp)
+      | (OK (tokens, exp), _) => afterPat (tokens, exp)
+      | (_, _) => OK (tokens, exp)
+    end
+
+  and pat tokens =
     let
       val result = ERR
       (* constructed pattern *)
@@ -120,38 +136,9 @@ struct
 
     (* todo: layered. *)
     in
-      result
-    end
-
-  fun infixedValueConstruction tokens =
-    let
-      val result = ERR
-      val pat1 = ifErr (pat', tokens, result)
-      val vid = ifOK (vid, pat1)
-      val pat2 = ifOK (pat', vid)
-    in
-      case (pat1, vid, pat2) of
-        (OK (_, pat1), OK (_, VAL_ID vid), OK (tokens, pat2)) =>
-          OK (tokens, FUNCTION_CALL (vid, [pat1, pat2]))
-      | (ERR, _, _) => ERR
-      | (_, ERR, _) => ERR
-      | (_, _, ERR) => ERR
-      | _ => raise Fail "128"
-    end
-
-  fun pat tokens =
-    let
-      val result = ERR
-
-      (* infixed value construction *)
-      val result = ifErr (infixedValueConstruction, tokens, result)
-
-      (* pat' *)
-      val result = ifErr (pat', tokens, result)
-
-    (* todo: typed pattern *)
-    in
-      result
+      case result of
+        OK (tokens, exp) => afterPat (tokens, exp)
+      | ERR => ERR
     end
 end
 
