@@ -41,6 +41,7 @@ sig
   | PIPE
   | TILDE
   | HASH
+  | WILDCARD
 
   | EOF
 
@@ -51,8 +52,9 @@ end
 
 structure Lexer :> LEXER =
 struct
-  fun areAllDead (idState, intState, punctState) =
+  fun areAllDead (idState, intState, punctState, wildcardState) =
     idState = 0 andalso intState = 0 andalso punctState = 0
+    andalso wildcardState = 0
 
   datatype token =
     INT of int
@@ -95,6 +97,7 @@ struct
   | PIPE
   | TILDE
   | HASH
+  | WILDCARD
 
   | EOF
 
@@ -140,6 +143,7 @@ struct
     | PIPE => "|"
     | TILDE => "~"
     | HASH => "#"
+    | WILDCARD => "_"
 
     | EOF => "EOF"
 
@@ -189,28 +193,62 @@ struct
     | "#" => HASH
     | _ => (print str; raise Empty)
 
-  fun getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
+  fun getMax
+    ( str
+    , start
+    , lastFinalID
+    , lastFinalInt
+    , lastFinalPunct
+    , lastFinalWildcard
+    , acc
+    ) =
     let
       val max = Int.max (lastFinalID, lastFinalInt)
       val max = Int.max (max, lastFinalPunct)
-      val str = String.substring (str, start, max - start + 1)
+      val max = Int.max (max, lastFinalWildcard)
     in
-      if max = lastFinalID then
-        (lastFinalID, getWordOrID str :: acc)
-      else if max = lastFinalInt then
-        case Int.fromString str of
-          SOME num => (lastFinalInt, INT num :: acc)
-        | NONE => raise Size
+      if max = lastFinalWildcard then
+        (lastFinalWildcard, WILDCARD :: acc)
       else
-        (* max = lastFinalPunct *)
-        (lastFinalPunct, getPunct str :: acc)
+        let
+          val str = String.substring (str, start, max - start + 1)
+        in
+          if max = lastFinalID then
+            (lastFinalID, getWordOrID str :: acc)
+          else if max = lastFinalInt then
+            case Int.fromString str of
+              SOME num => (lastFinalInt, INT num :: acc)
+            | NONE => raise Size
+          else
+            (* max = lastFinalPunct *)
+            (lastFinalPunct, getPunct str :: acc)
+        end
     end
 
-  fun getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc) =
-    if lastFinalID = ~1 andalso lastFinalInt = ~1 andalso lastFinalPunct = ~1 then
+  fun getToken
+    ( str
+    , start
+    , lastFinalID
+    , lastFinalInt
+    , lastFinalPunct
+    , lastFinalWildcard
+    , acc
+    ) =
+    if
+      lastFinalID = ~1 andalso lastFinalInt = ~1 andalso lastFinalPunct = ~1
+      andalso lastFinalWildcard = ~1
+    then
       (start, acc)
     else
-      getMax (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
+      getMax
+        ( str
+        , start
+        , lastFinalID
+        , lastFinalInt
+        , lastFinalPunct
+        , lastFinalWildcard
+        , acc
+        )
 
   fun skipFormattingChars (pos, str) =
     if pos = String.size str then
@@ -336,20 +374,32 @@ struct
     , idState
     , intState
     , punctState
+    , wildcardState
     , lastFinalID
     , lastFinalInt
     , lastFinalPunct
+    , lastFinalWildcard
     , start
     , acc
     ) =
     if pos = String.size str then
-      getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
+      getToken
+        ( str
+        , start
+        , lastFinalID
+        , lastFinalInt
+        , lastFinalPunct
+        , lastFinalWildcard
+        , acc
+        )
     else
       let
         val chr = String.sub (str, pos)
+
         val newIdState = IdDfa.getNewState (chr, idState)
         val newIntState = IntDfa.getNewState (chr, intState)
         val newPunctState = PunctDfa.getNewState (chr, punctState)
+        val newWildcardState = WildcardDfa.getNewState (chr, wildcardState)
       in
         if chr = #"\"" then
           (* found double quotes so we would like to parse string. 
@@ -369,9 +419,24 @@ struct
             end
           else
             getToken
-              (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
-        else if areAllDead (newIdState, newIntState, punctState) then
-          getToken (str, start, lastFinalID, lastFinalInt, lastFinalPunct, acc)
+              ( str
+              , start
+              , lastFinalID
+              , lastFinalInt
+              , lastFinalPunct
+              , lastFinalWildcard
+              , acc
+              )
+        else if areAllDead (newIdState, newIntState, punctState, wildcardState) then
+          getToken
+            ( str
+            , start
+            , lastFinalID
+            , lastFinalInt
+            , lastFinalPunct
+            , lastFinalWildcard
+            , acc
+            )
         else
           let
             val lastFinalID =
@@ -382,6 +447,10 @@ struct
 
             val lastFinalPunct =
               if PunctDfa.isFinal newPunctState then pos else lastFinalPunct
+
+            val lastFinalWildcard =
+              if WildcardDfa.isFinal newWildcardState then pos
+              else lastFinalWildcard
           in
             helpGetTokenEndPos
               ( pos + 1
@@ -389,9 +458,11 @@ struct
               , newIdState
               , newIntState
               , newPunctState
+              , newWildcardState
               , lastFinalID
               , lastFinalInt
               , lastFinalPunct
+              , lastFinalWildcard
               , start
               , acc
               )
@@ -405,6 +476,8 @@ struct
       , IdDfa.start
       , IntDfa.start
       , PunctDfa.start
+      , WildcardDfa.start
+      , ~1
       , ~1
       , ~1
       , ~1

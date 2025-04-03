@@ -3,4 +3,5 @@ $(SML_LIB)/basis/basis.mlb
 id-dfa.sml
 int-dfa.sml
 punct-dfa.sml
+wildcard-dfa.sml
 lexer.sml
