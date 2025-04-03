@@ -16,6 +16,7 @@ struct
   | LET_EXPR of dec list * exp
   | IF_THEN_ELSE of exp * exp * exp
   | TYPE_ANNOTATED of exp * string
+  | RECORD_PAT of (string * exp) list
 
   and dec =
     VAL_DEC of string * exp
@@ -90,6 +91,72 @@ struct
         end
     | _ => ERR
 
+  and loopRecordPat (tokens, acc) =
+    case tokens of
+      L.ID fieldName :: L.EQUALS :: tl =>
+        let in
+          case startPat tl of
+            OK (tl, pat) =>
+              let
+                val acc = (fieldName, pat) :: acc
+              in
+                case tl of
+                  L.COMMA :: tl => loopRecordPat (tl, acc)
+                | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+                | _ =>
+                    raise Fail "107: expecting comma or } when parsing record"
+              end
+          | ERR => ERR
+        end
+    | L.ID fieldName :: tl =>
+        let
+          val acc = (fieldName, VAL_ID fieldName) :: acc
+        in
+          case tl of
+            L.COMMA :: tl => loopRecordPat (tl, acc)
+          | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+          | _ => raise Fail "119: expecting comma or } when parsing record"
+        end
+    | L.INT label :: L.EQUALS :: tl =>
+        if label > 0 andalso label < 10 then
+          let
+            val label = Int.toString label
+          in
+            case startPat tl of
+              OK (tl, pat) =>
+                let
+                  val acc = (label, pat) :: acc
+                in
+                  case tl of
+                    L.COMMA :: tl => loopRecordPat (tl, acc)
+                  | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+                  | _ =>
+                      raise Fail "107: expecting comma or } when parsing record"
+                end
+            | ERR => ERR
+          end
+        else
+          raise Fail "131: label must be in range 1, 2, 3, ... 9"
+    | L.INT label :: tl =>
+        if label > 0 andalso label < 10 then
+          let
+            val label = Int.toString label
+            val acc = (label, VAL_ID label) :: acc
+          in
+            case tl of
+              L.COMMA :: tl => loopRecordPat (tl, acc)
+            | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+            | _ => raise Fail "119: expecting comma or } when parsing record"
+          end
+        else
+          raise Fail "131: label must be in range 1, 2, 3, ... 9"
+    | _ => ERR
+
+  and startRecordPat tokens =
+    case tokens of
+      L.L_BRACE :: tl => loopRecordPat (tl, [])
+    | _ => ERR
+
   and atpat tokens =
     let
       val result = ERR
@@ -97,7 +164,7 @@ struct
       val result = ifErr (scon, tokens, result)
       val result = ifErr (longvidOrOpLongvid, tokens, result)
       val result = ifErr (parenPat, tokens, result)
-    (* todo: record *)
+      val result = ifErr (startRecordPat, tokens, result)
     in
       result
     end
