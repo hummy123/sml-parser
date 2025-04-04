@@ -208,9 +208,9 @@ struct
       OK (tokens, exp) => typedPatLoop (tokens, exp)
     | ERR => OK (tokens, exp)
 
-  and infixLoop (tokens, exp) =
+  and startInfix (tokens, exp) =
     case infixedValueConstruction (tokens, exp) of
-      OK (tokens, exp) => infixLoop (tokens, exp)
+      OK (tokens, exp) => OK (tokens, exp)
     | ERR => OK (tokens, exp)
 
   and pat tokens =
@@ -225,7 +225,7 @@ struct
     (* todo: layered. *)
     in
       case result of
-        OK (tokens, exp) => infixLoop (tokens, exp)
+        OK (tokens, exp) => startInfix (tokens, exp)
       | ERR => ERR
     end
 
