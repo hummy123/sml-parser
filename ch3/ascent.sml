@@ -8,6 +8,17 @@ struct
   | BOOL_LITERAL of bool
   | IGNORE_LITERAL
 
+  datatype pat =
+    INT_PAT of int
+  | STRING_PAT of string
+  | BOOL_PAT of bool
+  | RECORD_PAT of (string * pat) list
+  | ID_PAT of string
+  | UNIT_PAT
+  | LIST_PAT of pat list
+  | WILDCARD_PAT
+  | TYPE_ANNOTATED of pat * string
+
   datatype exp =
     LITERAL of literal
   | GROUP of exp
@@ -15,14 +26,12 @@ struct
   | FUNCTION_CALL of string * exp list
   | LET_EXPR of dec list * exp
   | IF_THEN_ELSE of exp * exp * exp
-  | TYPE_ANNOTATED of exp * string
-  | RECORD_PAT of (string * exp) list
 
   and dec =
     VAL_DEC of string * exp
   | FUN_DEC of string * string list * exp
 
-  datatype result = OK of L.token list * exp | ERR
+  datatype result = OK of L.token list * pat | ERR
 
   fun ifErr (f, tokens, result) =
     case result of
@@ -36,14 +45,14 @@ struct
 
   fun scon tokens =
     case tokens of
-      L.INT num :: tl => OK (tl, LITERAL (INT_LITERAL num))
-    | L.STRING str :: tl => OK (tl, LITERAL (STRING_LITERAL str))
-    | L.BOOL b :: tl => OK (tl, LITERAL (BOOL_LITERAL b))
+      L.INT num :: tl => OK (tl, INT_PAT num)
+    | L.STRING str :: tl => OK (tl, STRING_PAT str)
+    | L.BOOL b :: tl => OK (tl, BOOL_PAT b)
     | _ => ERR
 
   fun wilcard tokens =
     case tokens of
-      L.WILDCARD :: tl => OK (tl, LITERAL IGNORE_LITERAL)
+      L.WILDCARD :: tl => OK (tl, WILDCARD_PAT)
     | _ => ERR
 
   fun loopLongvid (tokens, acc) =
@@ -55,7 +64,7 @@ struct
     case tokens of
       L.ID vid :: tl =>
         let val (tl, longvid) = loopLongvid (tl, vid)
-        in OK (tl, VAL_ID longvid)
+        in OK (tl, ID_PAT longvid)
         end
     | _ => ERR
 
@@ -63,17 +72,17 @@ struct
     case tokens of
       L.ID "op" :: L.ID vid :: tl =>
         let val (tl, longvid) = loopLongvid (tl, vid)
-        in OK (tl, VAL_ID longvid)
+        in OK (tl, ID_PAT longvid)
         end
     | L.ID vid :: tl =>
         let val (tl, longvid) = loopLongvid (tl, vid)
-        in OK (tl, VAL_ID longvid)
+        in OK (tl, ID_PAT longvid)
         end
     | _ => ERR
 
   fun vid tokens =
     case tokens of
-      L.ID vid :: tl => OK (tl, VAL_ID vid)
+      L.ID vid :: tl => OK (tl, ID_PAT vid)
     | _ => ERR
 
   fun parenPat tokens =
@@ -110,7 +119,7 @@ struct
         end
     | L.ID fieldName :: tl =>
         let
-          val acc = (fieldName, VAL_ID fieldName) :: acc
+          val acc = (fieldName, ID_PAT fieldName) :: acc
         in
           case tl of
             L.COMMA :: tl => loopRecordPat (tl, acc)
@@ -165,7 +174,7 @@ struct
       case (longvidResult, atpatResult) of
         (ERR, _) => ERR
       | (_, ERR) => ERR
-      | (OK (_, VAL_ID constructor), OK (tokens, atpat)) =>
+      | (OK (_, ID_PAT constructor), OK (tokens, atpat)) =>
           OK (tokens, FUNCTION_CALL (constructor, [atpat]))
       | _ => raise Fail "90"
     end
@@ -181,7 +190,7 @@ struct
       val pat2 = ifOK (pat, vidExp)
     in
       case (vidExp, pat2) of
-        (OK (_, VAL_ID vid), OK (tokens, pat2)) =>
+        (OK (_, ID_PAT vid), OK (tokens, pat2)) =>
           OK (tokens, FUNCTION_CALL (vid, [exp, pat2]))
       | (ERR, _) => ERR
       | (_, ERR) => ERR
