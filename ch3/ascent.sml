@@ -17,6 +17,7 @@ struct
   | UNIT_PAT
   | LIST_PAT of pat list
   | WILDCARD_PAT
+  | CONSTRUCTED_PAT of string * pat
   | TYPE_ANNOTATED of pat * string
 
   datatype exp =
@@ -175,7 +176,7 @@ struct
         (ERR, _) => ERR
       | (_, ERR) => ERR
       | (OK (_, ID_PAT constructor), OK (tokens, atpat)) =>
-          OK (tokens, FUNCTION_CALL (constructor, [atpat]))
+          OK (tokens, CONSTRUCTED_PAT (constructor, atpat))
       | _ => raise Fail "90"
     end
 
@@ -191,7 +192,12 @@ struct
     in
       case (vidExp, pat2) of
         (OK (_, ID_PAT vid), OK (tokens, pat2)) =>
-          OK (tokens, FUNCTION_CALL (vid, [exp, pat2]))
+          let
+            val record = RECORD_PAT [("1", exp), ("2", pat2)]
+            val constructedPat = CONSTRUCTED_PAT (vid, record)
+          in
+            OK (tokens, constructedPat)
+          end
       | (ERR, _) => ERR
       | (_, ERR) => ERR
       | _ => raise Fail "142"
