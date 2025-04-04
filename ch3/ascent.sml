@@ -16,6 +16,7 @@ struct
   | ID_PAT of string
   | UNIT_PAT
   | LIST_PAT of pat list
+  | VECTOR_PAT of pat vector
   | WILDCARD_PAT
   | CONSTRUCTED_PAT of string * pat
   | TYPE_ANNOTATED of pat * string
@@ -86,21 +87,6 @@ struct
       L.ID vid :: tl => OK (tl, ID_PAT vid)
     | _ => ERR
 
-  fun parenPat tokens =
-    case tokens of
-      L.L_PAREN :: tl =>
-        let in
-          case startPat tl of
-            OK (tokens, pat) =>
-              let in
-                case tokens of
-                  L.R_PAREN :: tl => OK (tl, pat)
-                | _ => ERR
-              end
-          | _ => ERR
-        end
-    | _ => ERR
-
   and loopRecordPat (tokens, acc) =
     case tokens of
       L.ID fieldName :: L.EQUALS :: tl =>
@@ -154,14 +140,65 @@ struct
       L.L_BRACE :: tl => loopRecordPat (tl, [])
     | _ => ERR
 
+  and unitPat tokens =
+    case tokens of
+      L.L_BRACE :: L.R_BRACE :: tl => OK (tl, UNIT_PAT)
+    | L.L_PAREN :: L.R_PAREN :: tl => OK (tl, UNIT_PAT)
+    | _ => ERR
+
+  and loopListPat (tokens, acc) =
+    case startPat tokens of
+      OK (tokens, el) =>
+        let
+          val acc = el :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => loopListPat (tl, acc)
+          | L.R_BRACKET :: tl => OK (tl, LIST_PAT (List.rev acc))
+          | _ => ERR
+        end
+    | ERR => ERR
+
+  and startListPat tokens =
+    case tokens of
+      L.L_BRACKET :: tl => loopListPat (tl, [])
+    | _ => ERR
+
+  and loopTuplePat (tokens, acc, count) =
+    case startPat tokens of
+      OK (tokens, el) =>
+        let
+          val strCount = Int.toString count
+          val acc = (strCount, el) :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => loopTuplePat (tl, acc, count + 1)
+          | L.R_PAREN :: tl =>
+              if count = 1 then
+                (* parenthesised pattern instead of tuple *)
+                OK (tl, el)
+              else
+                OK (tl, RECORD_PAT (List.rev acc))
+          | _ => ERR
+        end
+    | ERR => ERR
+
+  and startTuplePat tokens =
+    case tokens of
+      L.L_PAREN :: tl => loopTuplePat (tl, [], 1)
+    | _ => ERR
+
   and atpat tokens =
     let
       val result = ERR
       val result = ifErr (wilcard, tokens, result)
       val result = ifErr (scon, tokens, result)
       val result = ifErr (longvidOrOpLongvid, tokens, result)
-      val result = ifErr (parenPat, tokens, result)
       val result = ifErr (startRecordPat, tokens, result)
+      val result = ifErr (unitPat, tokens, result)
+      val result = ifErr (startListPat, tokens, result)
+      (* tuple pattern function also matches parenthesised pattern like (1) *)
+      val result = ifErr (startTuplePat, tokens, result)
     in
       result
     end
