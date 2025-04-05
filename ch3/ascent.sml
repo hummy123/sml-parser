@@ -20,6 +20,7 @@ struct
   | WILDCARD_PAT
   | CONSTRUCTED_PAT of string * pat
   | TYPE_ANNOTATED of pat * string
+  | AS_PAT of pat * pat
 
   datatype exp =
     LITERAL of literal
@@ -44,6 +45,11 @@ struct
     case result of
       ERR => ERR
     | OK (tokens, _) => f tokens
+
+  fun tryOrDefault (f, exp, tokens) =
+    case f (tokens, exp) of
+      ERR => (tokens, exp)
+    | OK (tokens, exp) => (tokens, exp)
 
   fun scon tokens =
     case tokens of
@@ -106,11 +112,40 @@ struct
         end
     | L.ID fieldName :: tl =>
         let
-          val acc = (fieldName, ID_PAT fieldName) :: acc
+          val exp = ID_PAT fieldName
+          val (tl, exp) = tryOrDefault (typedPattern, exp, tl)
         in
           case tl of
-            L.COMMA :: tl => loopRecordPat (tl, acc)
-          | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+            L.COMMA :: tl =>
+              let val acc = (fieldName, exp) :: acc
+              in loopRecordPat (tl, acc)
+              end
+          | L.R_BRACE :: tl =>
+              let
+                val acc = (fieldName, exp) :: acc
+                val acc = List.rev acc
+              in
+                OK (tl, RECORD_PAT acc)
+              end
+          | L.ID "as" :: tl =>
+              (* we have an as-pattern *)
+              let
+                val nextExp = startPat tl
+              in
+                case nextExp of
+                  OK (tokens, nextExp) =>
+                    (* we do have an as-pattern *)
+                    let
+                      val fulExp = AS_PAT (exp, nextExp)
+                      val acc = (fieldName, fulExp) :: acc
+                    in
+                      case tokens of
+                        L.COMMA :: tl => loopRecordPat (tl, acc)
+                      | L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
+                      | _ => ERR
+                    end
+                | ERR => raise Fail "139: missing as-pattern"
+              end
           | _ => raise Fail "119: expecting comma or } when parsing record"
         end
     | L.INT label :: L.EQUALS :: tl =>
