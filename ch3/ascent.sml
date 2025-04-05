@@ -51,6 +51,11 @@ struct
       ERR => (tokens, exp)
     | OK (tokens, exp) => (tokens, exp)
 
+  fun firstIfOK (res1, res2) =
+    case res1 of
+      OK _ => res1
+    | ERR => res2
+
   fun scon tokens =
     case tokens of
       L.INT num :: tl => OK (tl, INT_PAT num)
@@ -127,7 +132,7 @@ struct
               in
                 OK (tl, RECORD_PAT acc)
               end
-          | L.ID "as" :: tl =>
+          | L.AS :: tl =>
               (* we have an as-pattern *)
               let
                 val nextExp = startPat tl
@@ -223,6 +228,29 @@ struct
       L.L_PAREN :: tl => loopTuplePat (tl, [], 1)
     | _ => ERR
 
+  and helpLayeredPat (tl, vid) =
+    let
+      val exp = ID_PAT vid
+      val (tl, exp) = tryOrDefault (typedPattern, exp, tl)
+    in
+      case tl of
+        L.AS :: tl =>
+          let
+            val nextExp = startPat tl
+          in
+            case nextExp of
+              OK (tl, nextExp) => OK (tl, AS_PAT (exp, nextExp))
+            | _ => ERR
+          end
+      | _ => ERR
+    end
+
+  and layeredPat tokens =
+    case tokens of
+      L.ID "op" :: L.ID vid :: tl => helpLayeredPat (tl, vid)
+    | L.ID vid :: tl => helpLayeredPat (tl, vid)
+    | _ => ERR
+
   and atpat tokens =
     let
       val result = ERR
@@ -280,26 +308,36 @@ struct
       OK (tokens, exp) => typedPatLoop (tokens, exp)
     | ERR => OK (tokens, exp)
 
-  and startInfix (tokens, exp) =
-    case infixedValueConstruction (tokens, exp) of
-      OK (tokens, exp) => OK (tokens, exp)
-    | ERR => OK (tokens, exp)
-
+  (* rule order priority:
+   * 1. layered
+   * 2. infixedValueConstruction
+   * 3. constructedPattern
+   * 4. atomic
+   * *)
   and pat tokens =
-    let
-      val result = ERR
-      (* constructed pattern *)
-      val result = ifErr (constructedPattern, tokens, result)
-
-      (* atomic *)
-      val result = ifErr (atpat, tokens, result)
-
-    (* todo: layered. *)
-    in
-      case result of
-        OK (tokens, exp) => startInfix (tokens, exp)
-      | ERR => ERR
-    end
+    case layeredPat tokens of
+      ERR =>
+        let in
+          case constructedPattern tokens of
+            ERR =>
+              let
+                val atomic = atpat tokens
+              in
+                case atomic of
+                  OK (tokens, exp) =>
+                    firstIfOK (infixedValueConstruction (tokens, exp), atomic)
+                | ERR => ERR
+              end
+          | constructedOK =>
+              let in
+                case atpat tokens of
+                  OK (tokens, exp) =>
+                    firstIfOK
+                      (infixedValueConstruction (tokens, exp), constructedOK)
+                | ERR => constructedOK
+              end
+        end
+    | layeredOK => layeredOK
 
   (* 'pat' function is a loop, 
    * and because recursive descent zooms into the * smallest unit, 

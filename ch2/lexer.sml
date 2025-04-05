@@ -19,6 +19,7 @@ sig
   | ELSE
   | OF
   | INFIX
+  | AS
 
   (* punctuation *)
   | COMMA
@@ -75,6 +76,7 @@ struct
   | ELSE
   | OF
   | INFIX
+  | AS
 
   (* punctuation *)
   | COMMA
@@ -121,6 +123,7 @@ struct
     | ELSE => "else"
     | OF => "of"
     | INFIX => "infix"
+    | AS => "as"
 
     (* punctuation *)
     | COMMA => ","
@@ -163,6 +166,7 @@ struct
     | "true" => BOOL true
     | "false" => BOOL false
     | "infix" => INFIX
+    | "as" => AS
     | _ => ID str
 
   fun getPunct str =
