@@ -173,6 +173,9 @@ struct
           end
         else
           raise Fail "131: label must be: 1, 2, 3, ..."
+    | L.DOT :: L.DOT :: L.DOT :: L.R_BRACE :: tl =>
+        (* record-specific wildcard *)
+        OK (tl, RECORD_PAT (List.rev acc))
     | _ => ERR
 
   and startRecordPat tokens =
