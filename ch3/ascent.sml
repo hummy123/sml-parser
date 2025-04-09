@@ -311,36 +311,21 @@ struct
       OK (tokens, exp) => typedPatLoop (tokens, exp)
     | ERR => OK (tokens, exp)
 
-  (* rule order priority:
-   * 1. layered
-   * 2. infixedValueConstruction
-   * 3. constructedPattern
-   * 4. atomic
-   * *)
+  and helpPat tokens =
+    let
+      val err = ERR
+      val result = ifErr (layeredPat, tokens, result)
+      val result = ifErr (constructedPattern, tokens, result)
+    in
+      ifErr (atpat, tokens, result)
+    end
+
   and pat tokens =
-    case layeredPat tokens of
-      ERR =>
-        let in
-          case constructedPattern tokens of
-            ERR =>
-              let
-                val atomic = atpat tokens
-              in
-                case atomic of
-                  OK (tokens, exp) =>
-                    firstIfOK (infixedValueConstruction (tokens, exp), atomic)
-                | ERR => ERR
-              end
-          | constructedOK =>
-              let in
-                case atpat tokens of
-                  OK (tokens, exp) =>
-                    firstIfOK
-                      (infixedValueConstruction (tokens, exp), constructedOK)
-                | ERR => constructedOK
-              end
-        end
-    | layeredOK => layeredOK
+    case helpPat tokens of
+      OK (tokens, curPat) =>
+        firstIfOK
+          (infixedValueConstruction (tokens, curPat), OK (tokens, curPat))
+    | ERR => ERR
 
   (* 'pat' function is a loop, 
    * and because recursive descent zooms into the * smallest unit, 
