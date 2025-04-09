@@ -83,7 +83,7 @@ struct
 
   fun longvidOrOpLongvid tokens =
     case tokens of
-      L.ID "op" :: L.ID vid :: tl =>
+      L.OP :: L.ID vid :: tl =>
         let val (tl, longvid) = loopLongvid (tl, vid)
         in OK (tl, ID_PAT longvid)
         end
@@ -250,7 +250,7 @@ struct
 
   and layeredPat tokens =
     case tokens of
-      L.ID "op" :: L.ID vid :: tl => helpLayeredPat (tl, vid)
+      L.OP :: L.ID vid :: tl => helpLayeredPat (tl, vid)
     | L.ID vid :: tl => helpLayeredPat (tl, vid)
     | _ => ERR
 
@@ -313,7 +313,7 @@ struct
 
   and helpPat tokens =
     let
-      val err = ERR
+      val result = ERR
       val result = ifErr (layeredPat, tokens, result)
       val result = ifErr (constructedPattern, tokens, result)
     in
