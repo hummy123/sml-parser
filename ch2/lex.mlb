@@ -4,4 +4,5 @@ id-dfa.sml
 int-dfa.sml
 punct-dfa.sml
 wildcard-dfa.sml
+type-id-dfa.sml
 lexer.sml

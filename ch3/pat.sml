@@ -1,4 +1,4 @@
-structure Ascent =
+structure Pat =
 struct
   structure L = Lexer
 
