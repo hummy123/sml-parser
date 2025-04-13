@@ -344,12 +344,3 @@ struct
       | ERR => ERR
     end
 end
-
-fun parse str =
-  let
-    val tokens = Lexer.getTokens str
-  in
-    case Ascent.startPat tokens of
-      Ascent.OK (_, result) => result
-    | _ => raise Fail "145"
-  end

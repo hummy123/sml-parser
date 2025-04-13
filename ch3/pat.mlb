@@ -4,4 +4,4 @@ $(SML_LIB)/basis/basis.mlb
 ../ch2/lex.mlb
 
 ../ch3/type.sml
-../ch3/ascent.sml
+../ch3/pat.sml
