@@ -1,37 +1,26 @@
 structure TypeIdDfa =
 struct
-  val deadState = 0
-  val startState = 1
-  val primeState = 2
+  val dead = 0
+  val start = 1
+  val prime = 2
 
-  val primeLoopState = 3
-
-  fun makeDead _ = deadState
+  fun makeDead _ = dead
 
   fun makeStart pos =
-    if Char.chr pos = #"'" then primeState else deadState
+    if Char.chr pos = #"'" then prime else dead
 
   fun makePrime pos =
     let val chr = Char.chr pos
-    in if Char.isAlpha chr then primeLoopState else deadState
+    in if Char.isAlpha chr orelse chr = #"'" then prime else dead
     end
 
-  fun makePrimeLoop pos =
-    let
-      val chr = Char.chr pos
-    in
-      if Char.isAlphaNum chr orelse chr = #"'" then primeLoopState
-      else deadState
-    end
-
-  fun isFinal i = i = primeLoopState
+  fun isFinal i = i = prime
 
   val deadTable = Vector.tabulate (255, makeDead)
   val startTable = Vector.tabulate (255, makeStart)
   val primeTable = Vector.tabulate (255, makePrime)
-  val primeLoopTable = Vector.tabulate (255, makePrimeLoop)
 
-  val states = vector [deadTable, startTable, primeTable, primeLoopTable]
+  val states = vector [deadTable, startTable, primeTable]
 
   fun getNewState (chr, prevState) =
     let val table = Vector.sub (states, prevState)
