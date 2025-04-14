@@ -1,9 +1,0 @@
-$(SML_LIB)/basis/basis.mlb
-
-../vendored/brolib-sml/src/gap_map.sml
-string-map.sml
-
-../ch2/lex.mlb
-../ch3/parse-tree.sml
-runtime-value.sml
-interpreter.sml
