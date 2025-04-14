@@ -24,28 +24,24 @@ sig
   | OP
 
   (* punctuation *)
-  | COMMA
-  | COLON
-  | SEMI_COLON
   | L_PAREN
   | R_PAREN
   | L_BRACKET
   | R_BRACKET
   | L_BRACE
   | R_BRACE
-  | DOT
-  | EQUALS
-  | NOT_EQUALS
-  | LESS_THAN
-  | LESS_OR_EQUAL
-  | GREATER_THAN
-  | GREATER_THAN_OR_EQUAL
-  | AMPERSAND
-  | PIPE
-  | TILDE
-  | HASH
+  | COMMA
+  | COLON
+  | SEMI_COLON
+  | TRIPLE_DOT
   | WILDCARD
+  | PIPE
+  | EQUAL_ARROW
+  | DASH_ARROW
+  | HASH
 
+  (* singleton dot is not in grammar; maybe remove? *)
+  | DOT
   | EOF
 
   val tokenToString: token -> string
@@ -254,31 +250,15 @@ struct
 
   fun getPunct str =
     case str of
-      "," => COMMA
+      ":" => COLON
+    | ";" => SEMI_COLON
+    | "|" => PIPE
     | ":" => COLON
     | ";" => SEMI_COLON
-    | "(" => L_PAREN
-    | ")" => R_PAREN
-    | "[" => L_BRACKET
-    | "]" => R_BRACKET
-    | "{" => L_BRACE
-    | "}" => R_BRACE
-    | "." => DOT
-    | "+" => ID "+"
-    | "-" => ID "-"
-    | "*" => ID "*"
-    | "/" => ID "/"
-    | "=" => EQUALS
-    | "<>" => NOT_EQUALS
-    | "<" => LESS_THAN
-    | "<=" => LESS_OR_EQUAL
-    | ">" => GREATER_THAN
-    | ">=" => GREATER_THAN_OR_EQUAL
-    | "&" => AMPERSAND
-    | "|" => PIPE
-    | "~" => TILDE
+    | "=>" => EQUAL_ARROW
+    | "->" => DASH_ARROW
     | "#" => HASH
-    | _ => (print str; raise Empty)
+    | _ => ID str
 
   fun getTypeID str =
     let val isEqType = String.size str >= 2 andalso String.sub (str, 1) = #"'"
