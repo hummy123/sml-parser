@@ -31,7 +31,7 @@ struct
       | #"@" => final
       | #"\\" => final
       | #"~" => final
-      (* todo: apostrophe? *)
+      | #"`" => final
       | #"^" => final
       | #"|" => final
       | #"*" => final
@@ -68,7 +68,7 @@ struct
       | #"@" => final
       | #"\\" => final
       | #"~" => final
-      (* todo: apostrophe? *)
+      | #"`" => final
       | #"^" => final
       | #"|" => final
       | #"*" => final
