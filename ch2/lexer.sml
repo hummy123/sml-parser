@@ -75,28 +75,24 @@ struct
   | OP
 
   (* punctuation *)
-  | COMMA
-  | COLON
-  | SEMI_COLON
   | L_PAREN
   | R_PAREN
   | L_BRACKET
   | R_BRACKET
   | L_BRACE
   | R_BRACE
-  | DOT
-  | EQUALS
-  | NOT_EQUALS
-  | LESS_THAN
-  | LESS_OR_EQUAL
-  | GREATER_THAN
-  | GREATER_THAN_OR_EQUAL
-  | AMPERSAND
-  | PIPE
-  | TILDE
-  | HASH
+  | COMMA
+  | COLON
+  | SEMI_COLON
+  | TRIPLE_DOT
   | WILDCARD
+  | PIPE
+  | EQUAL_ARROW
+  | DASH_ARROW
+  | HASH
 
+  (* singleton dot is not in grammar; maybe remove? *)
+  | DOT
   | EOF
 
   type all_dfa =
@@ -204,28 +200,23 @@ struct
     | OP => "op"
 
     (* punctuation *)
-    | COMMA => ","
-    | COLON => ":"
-    | SEMI_COLON => ";"
     | L_PAREN => "("
     | R_PAREN => ")"
     | L_BRACKET => "["
     | R_BRACKET => "]"
     | L_BRACE => "{"
     | R_BRACE => "}"
-    | DOT => "."
-    | EQUALS => "="
-    | NOT_EQUALS => "<>"
-    | LESS_THAN => "<"
-    | LESS_OR_EQUAL => "<="
-    | GREATER_THAN => ">"
-    | GREATER_THAN_OR_EQUAL => ">="
-    | AMPERSAND => "&"
-    | PIPE => "|"
-    | TILDE => "~"
-    | HASH => "#"
+    | COMMA => ","
+    | COLON => ":"
+    | SEMI_COLON => ";"
+    | TRIPLE_DOT => "..."
     | WILDCARD => "_"
+    | PIPE => "|"
+    | EQUAL_ARROW => "=>"
+    | DASH_ARROW => "->"
+    | HASH => "#"
 
+    | DOT => "."
     | EOF => "EOF"
 
   fun getWordOrID str =
@@ -250,14 +241,21 @@ struct
 
   fun getPunct str =
     case str of
-      ":" => COLON
-    | ";" => SEMI_COLON
-    | "|" => PIPE
+      "(" => L_PAREN
+    | ")" => R_PAREN
+    | "[" => L_BRACKET
+    | "]" => R_BRACKET
+    | "{" => L_BRACE
+    | "}" => R_BRACE
+    | "," => COMMA
     | ":" => COLON
     | ";" => SEMI_COLON
+    | "..." => TRIPLE_DOT
+    | "|" => PIPE
     | "=>" => EQUAL_ARROW
     | "->" => DASH_ARROW
     | "#" => HASH
+    | "." => DOT
     | _ => ID str
 
   fun getTypeID str =

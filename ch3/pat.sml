@@ -100,7 +100,7 @@ struct
 
   and loopRecordPat (tokens, acc) =
     case tokens of
-      L.ID fieldName :: L.EQUALS :: tl =>
+      L.ID fieldName :: L.ID "=" :: tl =>
         let in
           case startPat tl of
             OK (tl, pat) =>
@@ -153,7 +153,7 @@ struct
               end
           | _ => raise Fail "119: expecting comma or } when parsing record"
         end
-    | L.INT label :: L.EQUALS :: tl =>
+    | L.INT label :: L.ID "=" :: tl =>
         if label > 0 then
           let
             val label = Int.toString label
@@ -173,7 +173,7 @@ struct
           end
         else
           raise Fail "131: label must be: 1, 2, 3, ..."
-    | L.DOT :: L.DOT :: L.DOT :: L.R_BRACE :: tl =>
+    | L.TRIPLE_DOT :: L.R_BRACE :: tl =>
         (* record-specific wildcard *)
         OK (tl, RECORD_PAT (List.rev acc))
     | _ => ERR
