@@ -19,7 +19,7 @@ struct
   | VECTOR_PAT of pat vector
   | WILDCARD_PAT
   | CONSTRUCTED_PAT of string * pat
-  | TYPE_ANNOTATED of pat * string
+  | TYPE_ANNOTATED of pat * Type.type_grm
   | AS_PAT of pat * pat
 
   datatype exp =
@@ -285,7 +285,12 @@ struct
 
   and typedPattern (tokens, exp) =
     case tokens of
-      L.COLON :: L.ID vid :: tl => OK (tl, TYPE_ANNOTATED (exp, vid))
+      L.COLON :: tl =>
+        let in
+          case Type.ty tl of
+            Type.OK (tokens, typ) => OK (tokens, TYPE_ANNOTATED (exp, typ))
+          | _ => ERR
+        end
     | _ => ERR
 
   and infixedValueConstruction (tokens, exp) =
