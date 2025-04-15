@@ -6,6 +6,8 @@ struct
     TY_VAR of {isEq: bool, id: string}
   | RECORD_TYPE of (string * type_grm) list
   | TY_CON of {tyseq: type_grm list, con: string}
+  | TUPLE_TYPE of type_grm list
+  | FUN_TY of type_grm list
 
   datatype result = OK of L.token list * type_grm | ERR
 
@@ -13,6 +15,11 @@ struct
     case result of
       ERR => f tokens
     | OK _ => result
+
+  fun firstIfOK (first, sec) =
+    case first of
+      OK _ => first
+    | ERR => sec
 
   fun tyvar tokens =
     case tokens of
@@ -79,11 +86,94 @@ struct
               let in
                 case tokens of
                   L.R_PAREN :: tl => OK (tl, tyval)
+                | L.COMMA :: tl => tyseqLongtycon (tokens, tyval)
                 | _ => ERR
               end
           | _ => ERR
         end
     | _ => ERR
+
+  and afterTy (tokens, typ) =
+    case startTupleTy (tokens, typ) of
+      OK (tokens, typ) => OK (tokens, typ)
+    | ERR =>
+        let in
+          case startFunTy (tokens, typ) of
+            OK (tokens, typ) => OK (tokens, typ)
+          | ERR =>
+              let in
+                case startLongTycon (tokens, [typ]) of
+                  OK (tokens, typ) => OK (tokens, typ)
+                | ERR => OK (tokens, typ)
+              end
+        end
+
+  and tupleTy (tokens, acc) =
+    case tokens of
+      L.ID "*" :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) => tupleTy (tokens, newTy :: acc)
+          | ERR => raise Fail "type.sml 128"
+        end
+    | _ => OK (tokens, TUPLE_TYPE (List.rev acc))
+
+  and startTupleTy (tokens, typ) =
+    case tokens of
+      L.ID "*" :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) => tupleTy (tokens, [newTy, typ])
+          | ERR => raise Fail "type.sml 138"
+        end
+    | _ => ERR
+
+  and funTy (tokens, acc) =
+    case tokens of
+      L.DASH_ARROW :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) => funTy (tokens, newTy :: acc)
+          | ERR => raise Fail "type.sml 150"
+        end
+    | _ => OK (tokens, FUN_TY (List.rev acc))
+
+  and startFunTy (tokens, typ) =
+    case tokens of
+      L.DASH_ARROW :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) => funTy (tokens, [newTy, typ])
+          | ERR => raise Fail "160"
+        end
+    | _ => ERR
+
+  and loopLongTycon (tokens, acc, tyvars) =
+    case tokens of
+      L.DOT :: L.ID id :: tl =>
+        if id = "*" then raise Fail "type.sml 167: * disallowed in tycon"
+        else loopLongTycon (tl, acc ^ "." ^ id, tyvars)
+    | _ =>
+        let val result = TY_CON {tyseq = tyvars, con = acc}
+        in OK (tokens, result)
+        end
+
+  and startLongTycon (tokens, tyvars) =
+    case tokens of
+      L.ID id :: tl =>
+        if id = "*" then raise Fail "type.sml 181: * disallowed in tycon"
+        else loopLongTycon (tl, id, tyvars)
+    | _ => ERR
+
+  and loopTyseqLongtycon (tokens, acc) =
+    case ty tokens of
+      OK (tokens, newTy) => loopTyseqLongtycon (tokens, newTy :: acc)
+    | ERR => startLongTycon (tokens, List.rev acc)
+
+  and tyseqLongtycon (tokens, typ) =
+    case ty tokens of
+      OK (tokens, newTy) => loopTyseqLongtycon (tokens, [newTy, typ])
+    | ERR => ERR
 
   and ty tokens =
     let
@@ -91,13 +181,9 @@ struct
       val result = ifErr (tyvar, tokens, result)
       val result = ifErr (startTyrow, tokens, result)
       val result = ifErr (parenTy, tokens, result)
-
-    (* todo:
-     * - type construction
-     * - tuple type
-     * - function type expression
-     * *)
     in
-      result
+      case result of
+        OK (tokens, typ) => afterTy (tokens, typ)
+      | ERR => startLongTycon (tokens, [])
     end
 end
