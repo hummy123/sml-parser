@@ -122,16 +122,19 @@ struct
     }
 
   fun areAllDead (dfa: all_dfa) =
-    let val {curID, curInt, curPunct, curWild, ...} = dfa
-    in curID = 0 andalso curInt = 0 andalso curPunct = 0 andalso curWild = 0
+    let
+      val {curID, curInt, curPunct, curWild, curType, ...} = dfa
+    in
+      curID = 0 andalso curInt = 0 andalso curPunct = 0 andalso curWild = 0
+      andalso curType = 0
     end
 
   fun hasAnyLast (dfa: all_dfa) =
     let
-      val {lastID, lastInt, lastPunct, lastWild, ...} = dfa
+      val {lastID, lastInt, lastPunct, lastWild, lastType, ...} = dfa
     in
       lastID <> ~1 orelse lastInt <> ~1 orelse lastPunct <> ~1
-      orelse lastWild <> ~1
+      orelse lastWild <> ~1 orelse lastType <> ~1
     end
 
   fun updateDfa (chr, dfa: all_dfa, pos) =
@@ -269,6 +272,7 @@ struct
       val max = Int.max (lastID, lastInt)
       val max = Int.max (max, lastPunct)
       val max = Int.max (max, lastWild)
+      val max = Int.max (max, lastType)
     in
       if max = lastWild then
         (lastWild, WILDCARD :: acc)
