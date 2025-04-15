@@ -73,7 +73,7 @@ struct
           raise Fail "34: label must be: 1, 2, 3, ..."
     | _ => ERR
 
-  and startTyrow tokens = 
+  and startTyrow tokens =
     case tokens of
       L.L_BRACE :: tl => tyrow (tl, [])
     | _ => ERR
@@ -95,21 +95,6 @@ struct
           | _ => ERR
         end
     | _ => ERR
-
-  and afterTy (tokens, typ) =
-    case startTupleTy (tokens, typ) of
-      OK (tokens, typ) => OK (tokens, typ)
-    | ERR =>
-        let in
-          case startFunTy (tokens, typ) of
-            OK (tokens, typ) => OK (tokens, typ)
-          | ERR =>
-              let in
-                case startLongTycon (tokens, [typ]) of
-                  OK (tokens, typ) => OK (tokens, typ)
-                | ERR => OK (tokens, typ)
-              end
-        end
 
   and tupleTy (tokens, acc) =
     case tokens of
@@ -170,12 +155,27 @@ struct
 
   and loopTyseqLongtycon (tokens, acc) =
     case ty tokens of
-      OK (tokens, newTy) => loopTyseqLongtycon (tokens, newTy :: acc)
+      OK (tokens, newTy) =>
+        let
+          val acc = newTy :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => loopTyseqLongtycon (tl, acc)
+          | L.R_PAREN :: tl => startLongTycon (tl, List.rev acc)
+          | _ => raise Fail "type.sml 165"
+        end
     | ERR => startLongTycon (tokens, List.rev acc)
 
   and tyseqLongtycon (tokens, typ) =
     case ty tokens of
-      OK (tokens, newTy) => loopTyseqLongtycon (tokens, [newTy, typ])
+      OK (tokens, newTy) =>
+        let in
+          case tokens of
+            L.COMMA :: tl => loopTyseqLongtycon (tl, [newTy, typ])
+          | L.R_PAREN :: tl => startLongTycon (tl, [typ, newTy])
+          | hd :: _ => raise Fail (L.tokenToString hd)
+          | _ => raise Fail "type.sml 177"
+        end
     | ERR => ERR
 
   and ty tokens =
@@ -189,4 +189,24 @@ struct
         OK (tokens, typ) => afterTy (tokens, typ)
       | ERR => startLongTycon (tokens, [])
     end
+
+  and afterTy (tokens, typ) =
+    case startTupleTy (tokens, typ) of
+      OK (tokens, typ) => OK (tokens, typ)
+    | ERR =>
+        let in
+          case startFunTy (tokens, typ) of
+            OK (tokens, typ) => OK (tokens, typ)
+          | ERR =>
+              let in
+                case startLongTycon (tokens, [typ]) of
+                  OK (tokens, typ) => OK (tokens, typ)
+                | ERR => OK (tokens, typ)
+              end
+        end
 end
+
+fun parse str =
+  let val tokens = Lexer.getTokens str
+  in Type.ty tokens
+  end
