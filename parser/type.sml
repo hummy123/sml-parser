@@ -73,7 +73,10 @@ struct
           raise Fail "34: label must be: 1, 2, 3, ..."
     | _ => ERR
 
-  and startTyrow tokens = tyrow (tokens, [])
+  and startTyrow tokens = 
+    case tokens of
+      L.L_BRACE :: tl => tyrow (tl, [])
+    | _ => ERR
 
   and parenTy tokens =
     case tokens of
@@ -86,7 +89,7 @@ struct
               let in
                 case tokens of
                   L.R_PAREN :: tl => OK (tl, tyval)
-                | L.COMMA :: tl => tyseqLongtycon (tokens, tyval)
+                | L.COMMA :: tl => tyseqLongtycon (tl, tyval)
                 | _ => ERR
               end
           | _ => ERR
