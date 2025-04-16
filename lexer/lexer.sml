@@ -101,11 +101,14 @@ struct
     , curPunct: int
     , curWild: int
     , curType: int
+    , curSpace: int
+
     , lastID: int
     , lastInt: int
     , lastPunct: int
     , lastWild: int
     , lastType: int
+    , lastSpace: int
     }
 
   val initialDfa =
@@ -114,27 +117,22 @@ struct
     , curPunct = PunctDfa.start
     , curWild = WildcardDfa.start
     , curType = TypeIdDfa.start
+    , curSpace = SpaceDfa.start
+
     , lastID = ~1
     , lastInt = ~1
     , lastPunct = ~1
     , lastWild = ~1
     , lastType = ~1
+    , lastSpace = ~1
     }
 
   fun areAllDead (dfa: all_dfa) =
     let
-      val {curID, curInt, curPunct, curWild, curType, ...} = dfa
+      val {curID, curInt, curPunct, curWild, curType, curSpace, ...} = dfa
     in
       curID = 0 andalso curInt = 0 andalso curPunct = 0 andalso curWild = 0
-      andalso curType = 0
-    end
-
-  fun hasAnyLast (dfa: all_dfa) =
-    let
-      val {lastID, lastInt, lastPunct, lastWild, lastType, ...} = dfa
-    in
-      lastID <> ~1 orelse lastInt <> ~1 orelse lastPunct <> ~1
-      orelse lastWild <> ~1 orelse lastType <> ~1
+      andalso curType = 0 andalso curSpace = 0
     end
 
   fun updateDfa (chr, dfa: all_dfa, pos) =
@@ -145,11 +143,14 @@ struct
         , curPunct
         , curWild
         , curType
+        , curSpace
+
         , lastID
         , lastInt
         , lastPunct
         , lastWild
         , lastType
+        , lastSpace
         } = dfa
 
       val curID = IdDfa.getNewState (chr, curID)
@@ -157,23 +158,28 @@ struct
       val curPunct = PunctDfa.getNewState (chr, curPunct)
       val curWild = WildcardDfa.getNewState (chr, curWild)
       val curType = TypeIdDfa.getNewState (chr, curType)
+      val curSpace = SpaceDfa.getNewState (chr, curSpace)
 
       val lastID = if IdDfa.isFinal curID then pos else lastID
       val lastInt = if IntDfa.isFinal curInt then pos else lastInt
       val lastPunct = if PunctDfa.isFinal curPunct then pos else lastPunct
       val lastWild = if WildcardDfa.isFinal curWild then pos else lastWild
       val lastType = if TypeIdDfa.isFinal curType then pos else lastType
+      val lastSpace = if SpaceDfa.isFinal curSpace then pos else lastSpace
     in
       { curID = curID
       , curInt = curInt
       , curPunct = curPunct
       , curWild = curWild
       , curType = curType
+      , curSpace = curSpace
+
       , lastID = lastID
       , lastInt = lastInt
       , lastPunct = lastPunct
       , lastWild = lastWild
       , lastType = lastType
+      , lastSpace = lastSpace
       }
     end
 
@@ -266,15 +272,25 @@ struct
     in TYPE_ID {isEqType = isEqType, id = str}
     end
 
-  fun getMax (str, start, dfa, acc) =
+  fun getToken (str, start, dfa, acc) =
     let
-      val {lastID, lastInt, lastPunct, lastWild, lastType, ...} = dfa
+      val {lastID, lastInt, lastPunct, lastWild, lastType, lastSpace, ...} = dfa
       val max = Int.max (lastID, lastInt)
       val max = Int.max (max, lastPunct)
       val max = Int.max (max, lastWild)
       val max = Int.max (max, lastType)
+      val max = Int.max (max, lastSpace)
     in
-      if max = lastWild then
+      if max = ~1 then
+        let
+          val chr = String.sub (str, start)
+          val str = String.implode [chr]
+        in
+          raise Fail ("unknown token: " ^ str)
+        end
+      else if max = lastSpace then
+        (lastSpace, acc)
+      else if max = lastWild then
         (lastWild, WILDCARD :: acc)
       else
         let
@@ -289,13 +305,10 @@ struct
           else if max = lastPunct then
             (lastPunct, getPunct str :: acc)
           else
-            (* max = lastType *)
+            (* if max = lastType *)
             (lastType, getTypeID str :: acc)
         end
     end
-
-  fun getToken (str, start, dfa, acc) =
-    if hasAnyLast dfa then getMax (str, start, dfa, acc) else (start, acc)
 
   fun skipFormattingChars (pos, str) =
     if pos = String.size str then

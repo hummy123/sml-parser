@@ -1,5 +1,6 @@
 $(SML_LIB)/basis/basis.mlb
 
+space-dfa.sml
 id-dfa.sml
 int-dfa.sml
 punct-dfa.sml

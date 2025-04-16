@@ -1,9 +1,0 @@
-let
-  fun countToZero (counter) =
-    if counter | counter then
-      countToZero (counter - 1)
-    else
-      counter
-in
-  countToZero (1)
-end
