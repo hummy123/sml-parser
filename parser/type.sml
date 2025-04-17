@@ -184,10 +184,14 @@ struct
       val result = ifErr (tyvar, tokens, result)
       val result = ifErr (startTyrow, tokens, result)
       val result = ifErr (parenTy, tokens, result)
+      val result =
+        case result of
+          OK _ => result
+        | ERR => startLongTycon (tokens, [])
     in
       case result of
         OK (tokens, typ) => afterTy (tokens, typ)
-      | ERR => startLongTycon (tokens, [])
+      | ERR => ERR
     end
 
   and afterTy (tokens, typ) =
