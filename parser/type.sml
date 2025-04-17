@@ -101,6 +101,43 @@ struct
       TUPLE_TYPE lst => (List.rev lst) @ acc
     | _ => new :: acc
 
+  and flattenFunTypes (new, acc) =
+    case new of
+      FUN_TY lst => (List.rev lst) @ acc
+    | _ => new :: acc
+
+  (* note about tupleTy and funTy:
+   * the function call `case ty tl of ...` will indirectly call funTy/tupleTy
+   * so the `newTy` we receive could possibly be another function type or
+   * another tuple type.
+   *
+   * This will produce a nested AST: the tuple 'a * b * c' will produce
+   * `TUPLE_TYPE [a, TUPLE_TYPE [b, c]]`
+   * instead of
+   * `TUPLE_TYPE [a, b, c]`
+   * when we want the second.
+   *
+   * We get around this by 'flattening' the tuple/function type, which produces
+   * the second AST.
+   *
+   * There is one exception: a tuple `a * (b * c)` is meant to be a nested tuple
+   * and we don't flatten it in this case.
+   * However, the function `a -> (b -> c)` is always the same as `a -> b -> c`
+   * so we always flatten the function type.
+   * *)
+  and funTy (tokens, typ) =
+    case tokens of
+      L.DASH_ARROW :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) =>
+              let val acc = flattenFunTypes (newTy, [typ])
+              in OK (tokens, FUN_TY acc)
+              end
+          | ERR => raise Fail "160"
+        end
+    | _ => ERR
+
   and tupleTy (tokens, typ) =
     case tokens of
       L.ID "*" :: L.L_PAREN :: tl =>
@@ -125,26 +162,6 @@ struct
                 OK (tokens, result)
               end
           | ERR => raise Fail "type.sml 138"
-        end
-    | _ => ERR
-
-  and funTy (tokens, acc) =
-    case tokens of
-      L.DASH_ARROW :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) => funTy (tokens, newTy :: acc)
-          | ERR => raise Fail "type.sml 150"
-        end
-    | _ => OK (tokens, FUN_TY (List.rev acc))
-
-  and startFunTy (tokens, typ) =
-    case tokens of
-      L.DASH_ARROW :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) => funTy (tokens, [newTy, typ])
-          | ERR => raise Fail "160"
         end
     | _ => ERR
 
@@ -211,7 +228,7 @@ struct
       OK (tokens, typ) => OK (tokens, typ)
     | ERR =>
         let in
-          case startFunTy (tokens, typ) of
+          case funTy (tokens, typ) of
             OK (tokens, typ) => OK (tokens, typ)
           | ERR =>
               let in
@@ -221,3 +238,8 @@ struct
               end
         end
 end
+
+fun parse str =
+  let val tokens = Lexer.getTokens str
+  in Type.ty tokens
+  end
