@@ -96,22 +96,34 @@ struct
         end
     | _ => ERR
 
-  and tupleTy (tokens, acc) =
-    case tokens of
-      L.ID "*" :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) => tupleTy (tokens, newTy :: acc)
-          | ERR => raise Fail "type.sml 128"
-        end
-    | _ => OK (tokens, TUPLE_TYPE (List.rev acc))
+  and flattenTupleTypes (new, acc) =
+    case new of
+      TUPLE_TYPE lst => (List.rev lst) @ acc
+    | _ => new :: acc
 
-  and startTupleTy (tokens, typ) =
+  and tupleTy (tokens, typ) =
     case tokens of
-      L.ID "*" :: tl =>
+      L.ID "*" :: L.L_PAREN :: tl =>
         let in
           case ty tl of
-            OK (tokens, newTy) => tupleTy (tokens, [newTy, typ])
+            OK (tokens, newTy) =>
+              let in
+                case tokens of
+                  L.R_PAREN :: tl => OK (tl, TUPLE_TYPE [typ, newTy])
+                | _ => raise Fail "type.sml 113: expected ( to be followed by )"
+              end
+          | ERR => ERR
+        end
+    | L.ID "*" :: tl =>
+        let in
+          case ty tl of
+            OK (tokens, newTy) =>
+              let
+                val acc = flattenTupleTypes (newTy, [typ])
+                val result = TUPLE_TYPE (List.rev acc)
+              in
+                OK (tokens, result)
+              end
           | ERR => raise Fail "type.sml 138"
         end
     | _ => ERR
@@ -195,7 +207,7 @@ struct
     end
 
   and afterTy (tokens, typ) =
-    case startTupleTy (tokens, typ) of
+    case tupleTy (tokens, typ) of
       OK (tokens, typ) => OK (tokens, typ)
     | ERR =>
         let in
@@ -209,8 +221,3 @@ struct
               end
         end
 end
-
-fun parse str =
-  let val tokens = Lexer.getTokens str
-  in Type.ty tokens
-  end
