@@ -1,15 +1,8 @@
 structure Type =
 struct
+  open ParseType
+
   structure L = Lexer
-
-  datatype type_grm =
-    TY_VAR of {isEq: bool, id: string}
-  | RECORD_TYPE of (string * type_grm) list
-  | TY_CON of {tyseq: type_grm list, con: string}
-  | TUPLE_TYPE of type_grm list
-  | FUN_TY of type_grm list
-
-  datatype result = OK of L.token list * type_grm | ERR
 
   fun ifErr (f, tokens, result) =
     case result of
@@ -202,7 +195,7 @@ struct
           case tokens of
             L.COMMA :: tl => loopTyseqLongtycon (tl, [newTy, typ])
           | L.R_PAREN :: tl => startLongTycon (tl, [typ, newTy])
-          | hd :: _ => raise Fail (L.tokenToString hd)
+          | hd :: _ => raise Fail (Token.toString hd)
           | _ => raise Fail "type.sml 177"
         end
     | ERR => ERR

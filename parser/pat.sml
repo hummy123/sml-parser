@@ -1,40 +1,8 @@
 structure Pat =
 struct
+  open ParseType
+
   structure L = Lexer
-
-  datatype literal =
-    INT_LITERAL of int
-  | STRING_LITERAL of string
-  | BOOL_LITERAL of bool
-  | IGNORE_LITERAL
-
-  datatype pat =
-    INT_PAT of int
-  | STRING_PAT of string
-  | BOOL_PAT of bool
-  | RECORD_PAT of (string * pat) list
-  | ID_PAT of string
-  | UNIT_PAT
-  | LIST_PAT of pat list
-  | VECTOR_PAT of pat vector
-  | WILDCARD_PAT
-  | CONSTRUCTED_PAT of string * pat
-  | TYPE_ANNOTATED of pat * Type.type_grm
-  | AS_PAT of pat * pat
-
-  datatype exp =
-    LITERAL of literal
-  | GROUP of exp
-  | VAL_ID of string
-  | FUNCTION_CALL of string * exp list
-  | LET_EXPR of dec list * exp
-  | IF_THEN_ELSE of exp * exp * exp
-
-  and dec =
-    VAL_DEC of string * exp
-  | FUN_DEC of string * string list * exp
-
-  datatype result = OK of L.token list * pat | ERR
 
   fun ifErr (f, tokens, result) =
     case result of
