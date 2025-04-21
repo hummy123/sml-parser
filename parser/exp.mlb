@@ -6,3 +6,4 @@ $(SML_LIB)/basis/basis.mlb
 ../parser/parse-type.sml
 ../parser/type.sml
 ../parser/pat.sml
+../parser/exp.sml

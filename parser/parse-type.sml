@@ -9,8 +9,8 @@ struct
 
   datatype pat =
     INT_PAT of int
-  | STRING_PAT of string
   | BOOL_PAT of bool
+  | STRING_PAT of string
   | RECORD_PAT of (string * pat) list
   | ID_PAT of string
   | UNIT_PAT
@@ -22,4 +22,13 @@ struct
   | AS_PAT of pat * pat
 
   datatype 'a result = OK of Token.t list * 'a | ERR
+
+  datatype exp =
+    INT_EXP of int
+  | BOOL_EXP of bool
+  | STRING_EXP of string
+
+  | EXP_VAL_ID of string
+  | RECORD_SELECTOR of string
+  | UNIT_EXP
 end
