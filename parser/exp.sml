@@ -32,17 +32,53 @@ struct
       L.HASH :: L.ID fieldName :: tl => OK (tl, RECORD_SELECTOR fieldName)
     | _ => ERR
 
-  and parseTuple (tokens, count, acc) =
+  and helpParseRecordLoop (tokens, fieldName, acc) =
     case exp tokens of
       OK (tokens, exp) =>
-        let in
+        let
+          val acc = (fieldName, exp) :: acc
+        in
           case tokens of
-            L.COMMA :: tl =>
-              parseTuple (tl, count + 1, (Int.toString count, exp) :: acc)
+            L.COMMA :: tl => parseRecordLoop (tl, acc)
+          | L.R_BRACE :: tl => OK (tl, RECORD_EXP (List.rev acc))
+          | _ => raise Fail "exp.sml 47"
+        end
+    | ERR => raise Fail "exp.sml 41"
+
+  and parseRecordLoop (tokens, acc) =
+    case tokens of
+      L.ID fieldName :: L.ID "=" :: tl =>
+        helpParseRecordLoop (tl, fieldName, acc)
+    | L.INT fieldNum :: L.ID "=" :: tl =>
+        if fieldNum > 0 then
+          helpParseRecordLoop (tl, Int.toString fieldNum, acc)
+        else
+          raise Fail "exp.sml 56: label must be: 1, 2, 3, ..."
+    | _ => raise Fail "exp.sml 57"
+
+  and parseRecord tokens =
+    case tokens of
+      L.L_BRACE :: tl => parseRecordLoop (tl, [])
+    | _ => ERR
+
+  and parseTuple (tokens: Token.t list, count: int, acc: (string * exp) list) =
+    case exp tokens of
+      OK (tokens, exp) =>
+        let
+          val acc = (Int.toString count, exp) :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => parseTuple (tl, count + 1, acc)
           | L.R_PAREN :: tl => OK (tl, RECORD_EXP (List.rev acc))
           | _ => ERR
         end
     | ERR => ERR
+
+  and parenExpAfterExp (tokens, exp) =
+    case tokens of
+      L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
+    | L.COMMA :: tl => (* tuple-exp *) parseTuple (tl, 2, [("1", exp)])
+    | _ => raise Fail "exp.sml 81"
 
   and parenExp tokens =
     case tokens of
@@ -54,15 +90,7 @@ struct
               (* possibly tuple-exp or paren-exp *)
               let in
                 case exp tl of
-                  OK (tokens, exp) =>
-                    let in
-                      case tokens of
-                        L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
-                      | L.COMMA :: tl =>
-                          (* tuple-exp *)
-                          parseTuple (tl, 2, [("1", exp)])
-                      | _ => raise Fail "exp.sml 55"
-                    end
+                  OK (tokens, exp) => parenExpAfterExp (tokens, exp)
                 | ERR => raise Fail "exp.sml 57"
               end
         end
@@ -83,8 +111,6 @@ struct
       result
     end
 
-  and exprow tokens = raise Fail "unimplmented"
-
   and appExp tokens = raise Fail ""
 
   and infexp tokens = raise Fail ""
@@ -99,7 +125,7 @@ struct
 
   and fnExp tokens = raise Fail ""
 
-  and exp tokens =
+  and exp tokens : exp result =
     let
       val result = ERR
       val result = ifErr (infexp, tokens, result)
