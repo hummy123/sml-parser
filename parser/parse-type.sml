@@ -27,8 +27,10 @@ struct
     INT_EXP of int
   | BOOL_EXP of bool
   | STRING_EXP of string
+
   | RECORD_EXP of (string * exp) list
   | LIST_EXP of exp list
+  | VECTOR_EXP of exp vector
 
   | EXP_VAL_ID of string
   | RECORD_SELECTOR of string

@@ -114,6 +114,30 @@ struct
       L.L_BRACKET :: tl => listExpLoop (tl, [])
     | _ => ERR
 
+  and vectorExpLoop (tokens, acc) =
+    case exp tokens of
+      OK (tokens, exp) =>
+        let
+          val acc = exp :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => vectorExpLoop (tl, acc)
+          | L.R_BRACKET :: tl =>
+              let
+                val acc = List.rev acc
+                val acc = Vector.fromList acc
+              in
+                OK (tl, VECTOR_EXP acc)
+              end
+          | _ => raise Fail "exp.sml 132"
+        end
+    | ERR => raise Fail "exp.sml 134"
+
+  and vectorExp tokens =
+    case tokens of
+      L.HASH :: L.L_BRACKET :: tl => vectorExpLoop (tl, [])
+    | _ => ERR
+
   and atExp tokens =
     let
       val result = ERR
@@ -123,8 +147,9 @@ struct
       val result = ifErr (recordSelector, tokens, result)
       val result = ifErr (parenExp, tokens, result)
       val result = ifErr (listExp, tokens, result)
+      val result = ifErr (vectorExp, tokens, result)
 
-    (* todo: vector exp, sequence exp, let exp *)
+    (* todo: sequence exp, let exp *)
     in
       result
     end
