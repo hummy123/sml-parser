@@ -28,6 +28,7 @@ struct
   | BOOL_EXP of bool
   | STRING_EXP of string
   | RECORD_EXP of (string * exp) list
+  | LIST_EXP of exp list
 
   | EXP_VAL_ID of string
   | RECORD_SELECTOR of string

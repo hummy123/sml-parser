@@ -96,17 +96,35 @@ struct
         end
     | _ => ERR
 
+  and listExpLoop (tokens, acc) =
+    case exp tokens of
+      OK (tokens, exp) =>
+        let
+          val acc = exp :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => listExpLoop (tl, acc)
+          | L.R_BRACKET :: tl => OK (tl, LIST_EXP (List.rev acc))
+          | _ => raise Fail "exp.sml 108"
+        end
+    | ERR => raise Fail "exp.sml 102"
+
+  and listExp tokens =
+    case tokens of
+      L.L_BRACKET :: tl => listExpLoop (tl, [])
+    | _ => ERR
+
   and atExp tokens =
     let
       val result = ERR
       val result = ifErr (scon, tokens, result)
       val result = ifErr (valueIdentifier, tokens, result)
-
-      (* todo: record exp *)
+      val result = ifErr (parseRecord, tokens, result)
       val result = ifErr (recordSelector, tokens, result)
       val result = ifErr (parenExp, tokens, result)
+      val result = ifErr (listExp, tokens, result)
 
-    (* todo: list exp, sequence exp, let exp *)
+    (* todo: vector exp, sequence exp, let exp *)
     in
       result
     end
