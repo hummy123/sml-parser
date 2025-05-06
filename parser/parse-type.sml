@@ -27,6 +27,7 @@ struct
     INT_EXP of int
   | BOOL_EXP of bool
   | STRING_EXP of string
+  | RECORD_EXP of (string * exp) list
 
   | EXP_VAL_ID of string
   | RECORD_SELECTOR of string

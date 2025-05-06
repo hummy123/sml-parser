@@ -32,12 +32,43 @@ struct
       L.HASH :: L.ID fieldName :: tl => OK (tl, RECORD_SELECTOR fieldName)
     | _ => ERR
 
-  fun unitExp tokens =
+  and parseTuple (tokens, count, acc) =
+    case exp tokens of
+      OK (tokens, exp) =>
+        let in
+          case tokens of
+            L.COMMA :: tl =>
+              parseTuple (tl, count + 1, (Int.toString count, exp) :: acc)
+          | L.R_PAREN :: tl => OK (tl, RECORD_EXP (List.rev acc))
+          | _ => ERR
+        end
+    | ERR => ERR
+
+  and parenExp tokens =
     case tokens of
-      L.L_PAREN :: L.R_PAREN :: tl => OK (tl, UNIT_EXP)
+      L.L_PAREN :: tl =>
+        let in
+          case tl of
+            L.R_PAREN :: tl => (* unit exp *) OK (tl, UNIT_EXP)
+          | _ =>
+              (* possibly tuple-exp or paren-exp *)
+              let in
+                case exp tl of
+                  OK (tokens, exp) =>
+                    let in
+                      case tokens of
+                        L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
+                      | L.COMMA :: tl =>
+                          (* tuple-exp *)
+                          parseTuple (tl, 2, [("1", exp)])
+                      | _ => raise Fail "exp.sml 55"
+                    end
+                | ERR => raise Fail "exp.sml 57"
+              end
+        end
     | _ => ERR
 
-  fun atExp tokens =
+  and atExp tokens =
     let
       val result = ERR
       val result = ifErr (scon, tokens, result)
@@ -45,9 +76,9 @@ struct
 
       (* todo: record exp *)
       val result = ifErr (recordSelector, tokens, result)
-      val result = ifErr (unitExp, tokens, result)
+      val result = ifErr (parenExp, tokens, result)
 
-    (* todo: tuple exp, list exp, sequence exp, let exp, paren exp *)
+    (* todo: list exp, sequence exp, let exp *)
     in
       result
     end
