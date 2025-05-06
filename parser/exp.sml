@@ -51,4 +51,37 @@ struct
     in
       result
     end
+
+  and exprow tokens = raise Fail "unimplmented"
+
+  and appExp tokens = raise Fail ""
+
+  and infexp tokens = raise Fail ""
+
+  and raiseExp tokens = raise Fail ""
+
+  and ifExp tokens = raise Fail ""
+
+  and whileExp tokens = raise Fail ""
+
+  and caseExp tokens = raise Fail ""
+
+  and fnExp tokens = raise Fail ""
+
+  and exp tokens =
+    let
+      val result = ERR
+      val result = ifErr (infexp, tokens, result)
+      val result = ifErr (raiseExp, tokens, result)
+      val result = ifErr (ifExp, tokens, result)
+      val result = ifErr (whileExp, tokens, result)
+      val result = ifErr (caseExp, tokens, result)
+      val result = ifErr (fnExp, tokens, result)
+    in
+      case result of
+        OK (tokens, exp) => afterExp (tokens, exp)
+      | ERR => ERR
+    end
+
+  and afterExp (tokens, exp) = raise Fail ""
 end
