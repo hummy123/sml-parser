@@ -74,10 +74,22 @@ struct
         end
     | ERR => ERR
 
+  and sequenceExp (tokens, mostRecentExp) =
+    case exp tokens of
+      OK (tokens, mostRecentExp) =>
+        let in
+          case tokens of
+            L.COLON :: tl => sequenceExp (tl, mostRecentExp)
+          | L.R_PAREN :: tl => OK (tl, mostRecentExp)
+          | _ => raise Fail "exp.sml 84"
+        end
+    | ERR => raise Fail "exp.sml 86"
+
   and parenExpAfterExp (tokens, exp) =
     case tokens of
       L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
     | L.COMMA :: tl => (* tuple-exp *) parseTuple (tl, 2, [("1", exp)])
+    | L.COLON :: tl => (* sequence-exp *) sequence - exp (tl, exp)
     | _ => raise Fail "exp.sml 81"
 
   and parenExp tokens =
@@ -149,7 +161,7 @@ struct
       val result = ifErr (listExp, tokens, result)
       val result = ifErr (vectorExp, tokens, result)
 
-    (* todo: sequence exp, let exp *)
+    (* todo: let exp *)
     in
       result
     end
