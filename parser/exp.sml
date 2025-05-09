@@ -61,7 +61,7 @@ struct
       L.L_BRACE :: tl => parseRecordLoop (tl, [])
     | _ => ERR
 
-  and parseTuple (tokens: Token.t list, count: int, acc: (string * exp) list) =
+  and parseTuple (tokens, count, acc) =
     case exp tokens of
       OK (tokens, exp) =>
         let
@@ -87,7 +87,7 @@ struct
 
   and parenExpAfterExp (tokens, exp) =
     case tokens of
-      L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
+      L.R_PAREN :: tl => (* paren-exp *) OK (tl, GROUP_EXP exp)
     | L.COMMA :: tl => (* tuple-exp *) parseTuple (tl, 2, [("1", exp)])
     | L.COLON :: tl => (* sequence-exp *) sequenceExp (tl, exp)
     | _ => raise Fail "exp.sml 81"

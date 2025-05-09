@@ -37,4 +37,5 @@ struct
   | UNIT_EXP
 
   | APP_EXP of exp list
+  | GROUP_EXP of exp
 end
