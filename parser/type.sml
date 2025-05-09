@@ -9,6 +9,11 @@ struct
       ERR => f tokens
     | OK _ => result
 
+  fun ifOK (result, f) =
+    case result of
+      OK (tokens, tyval) => f (tokens, tyval)
+    | ERR => ERR
+
   fun firstIfOK (first, sec) =
     case first of
       OK _ => first
@@ -23,45 +28,32 @@ struct
   fun tyrow (tokens, acc) =
     case tokens of
       L.ID fieldName :: L.COLON :: tl =>
-        let
-          val tyval = ty tl
-        in
-          case tyval of
-            OK (tokens, tyval) =>
-              let
-                val acc = (fieldName, tyval) :: acc
-              in
-                case tokens of
-                  L.COMMA :: tl => tyrow (tl, acc)
-                | L.R_BRACE :: tl =>
-                    let val acc = List.rev acc
-                    in OK (tl, RECORD_TYPE acc)
-                    end
-                | _ => ERR
-              end
-          | ERR => ERR
-        end
+        ifOK (ty tl, fn (tokens, tyval) =>
+          let
+            val acc = (fieldName, tyval) :: acc
+          in
+            case tokens of
+              L.COMMA :: tl => tyrow (tl, acc)
+            | L.R_BRACE :: tl =>
+                let val acc = List.rev acc
+                in OK (tl, RECORD_TYPE acc)
+                end
+            | _ => ERR
+          end)
     | L.INT num :: L.COLON :: tl =>
         if num > 0 then
-          (* is valid lab *)
-          let
-            val tyval = ty tl
-          in
-            case tyval of
-              OK (tokens, tyval) =>
-                let
-                  val acc = (Int.toString num, tyval) :: acc
-                in
-                  case tokens of
-                    L.COMMA :: tl => tyrow (tl, acc)
-                  | L.R_BRACE :: tl =>
-                      let val acc = List.rev acc
-                      in OK (tl, RECORD_TYPE acc)
-                      end
-                  | _ => ERR
-                end
-            | ERR => ERR
-          end
+          ifOK (ty tl, fn (tokens, tyval) =>
+            let
+              val acc = (Int.toString num, tyval) :: acc
+            in
+              case tokens of
+                L.COMMA :: tl => tyrow (tl, acc)
+              | L.R_BRACE :: tl =>
+                  let val acc = List.rev acc
+                  in OK (tl, RECORD_TYPE acc)
+                  end
+              | _ => ERR
+            end)
         else
           raise Fail "34: label must be: 1, 2, 3, ..."
     | _ => ERR
@@ -74,19 +66,11 @@ struct
   and parenTy tokens =
     case tokens of
       L.L_PAREN :: tl =>
-        let
-          val tyval = ty tl
-        in
-          case tyval of
-            OK (tokens, tyval) =>
-              let in
-                case tokens of
-                  L.R_PAREN :: tl => OK (tl, tyval)
-                | L.COMMA :: tl => tyseqLongtycon (tl, tyval)
-                | _ => ERR
-              end
-          | _ => ERR
-        end
+        ifOK (ty tl, fn (tokens, tyval) =>
+          case tokens of
+            L.R_PAREN :: tl => OK (tl, tyval)
+          | L.COMMA :: tl => tyseqLongtycon (tl, tyval)
+          | _ => ERR)
     | _ => ERR
 
   and flattenTupleTypes (new, acc) =
@@ -121,41 +105,27 @@ struct
   and funTy (tokens, typ) =
     case tokens of
       L.DASH_ARROW :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) =>
-              let val acc = flattenFunTypes (newTy, [typ])
-              in OK (tokens, FUN_TY acc)
-              end
-          | ERR => raise Fail "160"
-        end
+        ifOK (ty tl, fn (tokens, newTy) =>
+          let val acc = flattenFunTypes (newTy, [typ])
+          in OK (tokens, FUN_TY acc)
+          end)
     | _ => ERR
 
   and tupleTy (tokens, typ) =
     case tokens of
       L.ID "*" :: L.L_PAREN :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) =>
-              let in
-                case tokens of
-                  L.R_PAREN :: tl => OK (tl, TUPLE_TYPE [typ, newTy])
-                | _ => raise Fail "type.sml 113: expected ( to be followed by )"
-              end
-          | ERR => ERR
-        end
+        ifOK (ty tl, fn (tokens, newTy) =>
+          case tokens of
+            L.R_PAREN :: tl => OK (tl, TUPLE_TYPE [typ, newTy])
+          | _ => raise Fail "type.sml 113: expected ( to be followed by )")
     | L.ID "*" :: tl =>
-        let in
-          case ty tl of
-            OK (tokens, newTy) =>
-              let
-                val acc = flattenTupleTypes (newTy, [typ])
-                val result = TUPLE_TYPE (List.rev acc)
-              in
-                OK (tokens, result)
-              end
-          | ERR => raise Fail "type.sml 138"
-        end
+        ifOK (ty tl, fn (tokens, newTy) =>
+          let
+            val acc = flattenTupleTypes (newTy, [typ])
+            val result = TUPLE_TYPE (List.rev acc)
+          in
+            OK (tokens, result)
+          end)
     | _ => ERR
 
   and loopLongTycon (tokens, acc, tyvars) =
@@ -189,16 +159,12 @@ struct
     | ERR => startLongTycon (tokens, List.rev acc)
 
   and tyseqLongtycon (tokens, typ) =
-    case ty tokens of
-      OK (tokens, newTy) =>
-        let in
-          case tokens of
-            L.COMMA :: tl => loopTyseqLongtycon (tl, [newTy, typ])
-          | L.R_PAREN :: tl => startLongTycon (tl, [typ, newTy])
-          | hd :: _ => raise Fail (Token.toString hd)
-          | _ => raise Fail "type.sml 177"
-        end
-    | ERR => ERR
+    ifOK (ty tokens, fn (tokens, newTy) =>
+      case tokens of
+        L.COMMA :: tl => loopTyseqLongtycon (tl, [newTy, typ])
+      | L.R_PAREN :: tl => startLongTycon (tl, [typ, newTy])
+      | hd :: _ => raise Fail (Token.toString hd)
+      | _ => raise Fail "type.sml 177")
 
   and ty tokens =
     let
