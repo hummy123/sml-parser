@@ -36,5 +36,5 @@ struct
   | RECORD_SELECTOR of string
   | UNIT_EXP
 
-  | APP_EXP of exp * exp list
+  | APP_EXP of exp list
 end

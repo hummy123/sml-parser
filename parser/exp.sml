@@ -166,21 +166,14 @@ struct
       result
     end
 
-  and loopAppExp (tokens, acc, firstExp) =
+  and loopAppExp (tokens, acc) =
     case atExp tokens of
-      OK (tokens, exp) => loopAppExp (tokens, exp :: acc, firstExp)
-    | ERR =>
-        let in
-          (* if list is empty, then we only have a single expression
-           * and not a function applicatoin *)
-          case acc of
-            [] => OK (tokens, firstExp)
-          | _ => OK (tokens, APP_EXP (firstExp, List.rev acc))
-        end
+      OK (tokens, exp) => loopAppExp (tokens, exp :: acc)
+    | ERR => OK (tokens, APP_EXP (List.rev acc))
 
   and appExp tokens =
     case atExp tokens of
-      OK (tokens, firstExp) => loopAppExp (tokens, [], firstExp)
+      OK (tokens, exp) => loopAppExp (tokens, [exp])
     | ERR => ERR
 
   and infExp tokens = raise Fail ""
@@ -198,7 +191,7 @@ struct
   and exp tokens : exp result =
     let
       val result = ERR
-      val result = ifErr (infexp, tokens, result)
+      val result = ifErr (infExp, tokens, result)
       val result = ifErr (raiseExp, tokens, result)
       val result = ifErr (ifExp, tokens, result)
       val result = ifErr (whileExp, tokens, result)
