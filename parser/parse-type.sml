@@ -35,4 +35,6 @@ struct
   | EXP_VAL_ID of string
   | RECORD_SELECTOR of string
   | UNIT_EXP
+
+  | APP_EXP of exp * exp list
 end

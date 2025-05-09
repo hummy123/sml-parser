@@ -89,7 +89,7 @@ struct
     case tokens of
       L.R_PAREN :: tl => (* paren-exp *) OK (tl, exp)
     | L.COMMA :: tl => (* tuple-exp *) parseTuple (tl, 2, [("1", exp)])
-    | L.COLON :: tl => (* sequence-exp *) sequence - exp (tl, exp)
+    | L.COLON :: tl => (* sequence-exp *) sequenceExp (tl, exp)
     | _ => raise Fail "exp.sml 81"
 
   and parenExp tokens =
@@ -166,9 +166,24 @@ struct
       result
     end
 
-  and appExp tokens = raise Fail ""
+  and loopAppExp (tokens, acc, firstExp) =
+    case atExp tokens of
+      OK (tokens, exp) => loopAppExp (tokens, exp :: acc, firstExp)
+    | ERR =>
+        let in
+          (* if list is empty, then we only have a single expression
+           * and not a function applicatoin *)
+          case acc of
+            [] => OK (tokens, firstExp)
+          | _ => OK (tokens, APP_EXP (firstExp, List.rev acc))
+        end
 
-  and infexp tokens = raise Fail ""
+  and appExp tokens =
+    case atExp tokens of
+      OK (tokens, firstExp) => loopAppExp (tokens, [], firstExp)
+    | ERR => ERR
+
+  and infExp tokens = raise Fail ""
 
   and raiseExp tokens = raise Fail ""
 
