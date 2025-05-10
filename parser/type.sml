@@ -4,11 +4,6 @@ struct
 
   structure L = Lexer
 
-  fun ifErr (f, tokens, result) =
-    case result of
-      ERR => f tokens
-    | OK _ => result
-
   fun ifOK (result, f) =
     case result of
       OK (tokens, tyval) => f (tokens, tyval)
@@ -168,13 +163,9 @@ struct
 
   and ty tokens =
     let
-      val result = ERR
-      val result = ifErr (tyvar, tokens, result)
-      val result = ifErr (startTyrow, tokens, result)
-      val result = ifErr (parenTy, tokens, result)
       val result =
-        case result of
-          OK _ => result
+        case Combo.choice ([tyvar, startTyrow, parenTy], tokens) of
+          (result as OK _) => result
         | ERR => startLongTycon (tokens, [])
     in
       case result of
@@ -197,8 +188,3 @@ struct
               end
         end
 end
-
-fun parse str =
-  let val tokens = Lexer.getTokens str
-  in Type.ty tokens
-  end

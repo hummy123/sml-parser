@@ -21,8 +21,6 @@ struct
   | TYPE_ANNOTATED of pat * type_grm
   | AS_PAT of pat * pat
 
-  datatype 'a result = OK of Token.t list * 'a | ERR
-
   datatype exp =
     INT_EXP of int
   | BOOL_EXP of bool
@@ -38,4 +36,6 @@ struct
 
   | APP_EXP of exp list
   | GROUP_EXP of exp
+
+  datatype 'a result = OK of Token.t list * 'a | ERR
 end

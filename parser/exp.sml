@@ -4,11 +4,6 @@ struct
 
   structure L = Lexer
 
-  fun ifErr (f, tokens, result) =
-    case result of
-      ERR => f tokens
-    | OK _ => result
-
   fun scon tokens =
     case tokens of
       L.INT num :: tl => OK (tl, INT_EXP num)
@@ -151,20 +146,18 @@ struct
     | _ => ERR
 
   and atExp tokens =
-    let
-      val result = ERR
-      val result = ifErr (scon, tokens, result)
-      val result = ifErr (valueIdentifier, tokens, result)
-      val result = ifErr (parseRecord, tokens, result)
-      val result = ifErr (recordSelector, tokens, result)
-      val result = ifErr (parenExp, tokens, result)
-      val result = ifErr (listExp, tokens, result)
-      val result = ifErr (vectorExp, tokens, result)
-
-    (* todo: let exp *)
-    in
-      result
-    end
+    Combo.choice
+      ( [ scon
+        , valueIdentifier
+        , parseRecord
+        , recordSelector
+        , parenExp
+        , listExp
+        , vectorExp
+        (* todo: let exp *)
+        ]
+      , tokens
+      )
 
   and loopAppExp (tokens, acc) =
     case atExp tokens of
@@ -190,13 +183,8 @@ struct
 
   and exp tokens : exp result =
     let
-      val result = ERR
-      val result = ifErr (infExp, tokens, result)
-      val result = ifErr (raiseExp, tokens, result)
-      val result = ifErr (ifExp, tokens, result)
-      val result = ifErr (whileExp, tokens, result)
-      val result = ifErr (caseExp, tokens, result)
-      val result = ifErr (fnExp, tokens, result)
+      val result = Combo.choice
+        ([infExp, raiseExp, ifExp, whileExp, caseExp, fnExp], tokens)
     in
       case result of
         OK (tokens, exp) => afterExp (tokens, exp)

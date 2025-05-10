@@ -4,11 +4,6 @@ struct
 
   structure L = Lexer
 
-  fun ifErr (f, tokens, result) =
-    case result of
-      ERR => f tokens
-    | OK _ => result
-
   fun ifOK (f, result) =
     case result of
       ERR => ERR
@@ -223,24 +218,23 @@ struct
     | _ => ERR
 
   and atpat tokens =
-    let
-      val result = ERR
-      val result = ifErr (wilcard, tokens, result)
-      val result = ifErr (scon, tokens, result)
-      val result = ifErr (longvidOrOpLongvid, tokens, result)
-      val result = ifErr (startRecordPat, tokens, result)
-      val result = ifErr (unitPat, tokens, result)
-      val result = ifErr (startListPat, tokens, result)
-      (* tuple pattern function also matches parenthesised pattern like (1) *)
-      val result = ifErr (startTuplePat, tokens, result)
-    in
-      result
-    end
+    Combo.choice
+      ( [ wilcard
+        , scon
+        , longvidOrOpLongvid
+        , startRecordPat
+        , unitPat
+        , startListPat
+        (* startTuplePat function also 
+         * matches parenthesised pattern like (1) *)
+        , startTuplePat
+        ]
+      , tokens
+      )
 
   and constructedPattern tokens =
     let
-      val result = ERR
-      val longvidResult = ifErr (longvidOrOpLongvid, tokens, result)
+      val longvidResult = longvidOrOpLongvid tokens
       val atpatResult = ifOK (atpat, longvidResult)
     in
       case (longvidResult, atpatResult) of
@@ -285,13 +279,7 @@ struct
     | ERR => OK (tokens, exp)
 
   and helpPat tokens =
-    let
-      val result = ERR
-      val result = ifErr (layeredPat, tokens, result)
-      val result = ifErr (constructedPattern, tokens, result)
-    in
-      ifErr (atpat, tokens, result)
-    end
+    Combo.choice ([layeredPat, constructedPattern, atpat], tokens)
 
   and pat tokens =
     case helpPat tokens of
@@ -309,11 +297,7 @@ struct
    * and will let us place the type annotation for the whole pattern 
    * because of that. *)
   and startPat tokens =
-    let
-      val result = pat tokens
-    in
-      case result of
-        OK (tokens, exp) => typedPatLoop (tokens, exp)
-      | ERR => ERR
-    end
+    case pat tokens of
+      OK (tokens, exp) => typedPatLoop (tokens, exp)
+    | ERR => ERR
 end
