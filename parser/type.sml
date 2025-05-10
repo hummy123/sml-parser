@@ -4,16 +4,6 @@ struct
 
   structure L = Lexer
 
-  fun ifOK (result, f) =
-    case result of
-      OK (tokens, tyval) => f (tokens, tyval)
-    | ERR => ERR
-
-  fun firstIfOK (first, sec) =
-    case first of
-      OK _ => first
-    | ERR => sec
-
   fun tyvar tokens =
     case tokens of
       L.TYPE_ID {isEqType, id} :: tl =>
@@ -23,7 +13,7 @@ struct
   fun tyrow (tokens, acc) =
     case tokens of
       L.ID fieldName :: L.COLON :: tl =>
-        ifOK (ty tl, fn (tokens, tyval) =>
+        Combo.next (ty tl, fn (tokens, tyval) =>
           let
             val acc = (fieldName, tyval) :: acc
           in
@@ -37,7 +27,7 @@ struct
           end)
     | L.INT num :: L.COLON :: tl =>
         if num > 0 then
-          ifOK (ty tl, fn (tokens, tyval) =>
+          Combo.next (ty tl, fn (tokens, tyval) =>
             let
               val acc = (Int.toString num, tyval) :: acc
             in
@@ -61,7 +51,7 @@ struct
   and parenTy tokens =
     case tokens of
       L.L_PAREN :: tl =>
-        ifOK (ty tl, fn (tokens, tyval) =>
+        Combo.next (ty tl, fn (tokens, tyval) =>
           case tokens of
             L.R_PAREN :: tl => OK (tl, tyval)
           | L.COMMA :: tl => tyseqLongtycon (tl, tyval)
@@ -100,7 +90,7 @@ struct
   and funTy (tokens, typ) =
     case tokens of
       L.DASH_ARROW :: tl =>
-        ifOK (ty tl, fn (tokens, newTy) =>
+        Combo.next (ty tl, fn (tokens, newTy) =>
           let val acc = flattenFunTypes (newTy, [typ])
           in OK (tokens, FUN_TY acc)
           end)
@@ -109,12 +99,12 @@ struct
   and tupleTy (tokens, typ) =
     case tokens of
       L.ID "*" :: L.L_PAREN :: tl =>
-        ifOK (ty tl, fn (tokens, newTy) =>
+        Combo.next (ty tl, fn (tokens, newTy) =>
           case tokens of
             L.R_PAREN :: tl => OK (tl, TUPLE_TYPE [typ, newTy])
           | _ => raise Fail "type.sml 113: expected ( to be followed by )")
     | L.ID "*" :: tl =>
-        ifOK (ty tl, fn (tokens, newTy) =>
+        Combo.next (ty tl, fn (tokens, newTy) =>
           let
             val acc = flattenTupleTypes (newTy, [typ])
             val result = TUPLE_TYPE (List.rev acc)
@@ -154,7 +144,7 @@ struct
     | ERR => startLongTycon (tokens, List.rev acc)
 
   and tyseqLongtycon (tokens, typ) =
-    ifOK (ty tokens, fn (tokens, newTy) =>
+    Combo.next (ty tokens, fn (tokens, newTy) =>
       case tokens of
         L.COMMA :: tl => loopTyseqLongtycon (tl, [newTy, typ])
       | L.R_PAREN :: tl => startLongTycon (tl, [typ, newTy])

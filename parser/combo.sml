@@ -11,4 +11,9 @@ struct
           | (result as OK _) => result
         end
     | [] => ERR
+
+  fun next (result, f) =
+    case result of
+      OK (tokens, data) => f (tokens, data)
+    | ERR => ERR
 end
