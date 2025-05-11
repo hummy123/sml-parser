@@ -191,5 +191,12 @@ struct
       | ERR => ERR
     end
 
-  and afterExp (tokens, exp) = raise Fail ""
+  and boolExp (tokens, exp) =
+    case tokens of
+      L.ANDALSO :: tl => Combo.next (exp tl, OK)
+    | L.ORELSE :: tl => Combo.next (exp tl, OK)
+    | _ => ERR
+
+  and afterExp (tokens, exp) =
+    Combo.choiceData ([boolExp], tokens, exp)
 end

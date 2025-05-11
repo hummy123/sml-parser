@@ -22,6 +22,9 @@ sig
   | INFIX
   | AS
   | OP
+  | ANDALSO
+  | ORELSE
+  | HANDLE
 
   (* punctuation *)
   | L_PAREN
@@ -71,6 +74,9 @@ struct
   | INFIX
   | AS
   | OP
+  | ANDALSO
+  | ORELSE
+  | HANDLE
 
   (* punctuation *)
   | L_PAREN
@@ -117,6 +123,9 @@ struct
     | INFIX => "infix"
     | AS => "as"
     | OP => "op"
+    | ANDALSO => "andalso"
+    | ORELSE => "orelse"
+    | HANDLE => "handle"
 
     (* punctuation *)
     | L_PAREN => "("

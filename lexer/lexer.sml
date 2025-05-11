@@ -108,6 +108,9 @@ struct
     | "infix" => INFIX
     | "as" => AS
     | "op" => OP
+    | "andalso" => ANDALSO
+    | "orelse" => ORELSE
+    | "handle" => HANDLE
     | _ => ID str
 
   fun getPunct str =
