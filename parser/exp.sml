@@ -191,10 +191,14 @@ struct
       | ERR => ERR
     end
 
-  and boolExp (tokens, exp) =
+  and boolExp (tokens, exp1) =
     case tokens of
-      L.ANDALSO :: tl => Combo.next (exp tl, OK)
-    | L.ORELSE :: tl => Combo.next (exp tl, OK)
+      L.ANDALSO :: tl =>
+        Combo.next (exp tl, fn (tokens, exp2) =>
+          OK (tokens, ANDALSO_EXP (exp1, exp2)))
+    | L.ORELSE :: tl =>
+        Combo.next (exp tl, fn (tokens, exp2) =>
+          OK (tokens, (ORELSE_EXP (exp1, exp2))))
     | _ => ERR
 
   and afterExp (tokens, exp) =

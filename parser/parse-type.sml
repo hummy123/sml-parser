@@ -37,5 +37,8 @@ struct
   | APP_EXP of exp list
   | GROUP_EXP of exp
 
+  | ANDALSO_EXP of exp * exp
+  | ORELSE_EXP of exp * exp
+
   datatype 'a result = OK of Token.t list * 'a | ERR
 end
