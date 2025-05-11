@@ -201,6 +201,30 @@ struct
           OK (tokens, (ORELSE_EXP (exp1, exp2))))
     | _ => ERR
 
+  and typedExpLoop (tokens, exp) =
+    case tokens of
+      L.COLON :: tl =>
+        Combo.next (Type.ty tl, fn (tokens, typ) =>
+          let val exp = TYPED_EXP (exp, typ)
+          in typedExpLoop (tokens, exp)
+          end)
+    | _ => OK (tokens, exp)
+
+  and typedExp (tokens, exp) =
+    case tokens of
+      L.COLON :: tl =>
+        Combo.next (Type.ty tl, fn (tokens, typ) =>
+          let val exp = TYPED_EXP (exp, typ)
+          in typedExpLoop (tokens, exp)
+          end)
+    | _ => ERR
+
   and afterExp (tokens, exp) =
-    Combo.choiceData ([boolExp], tokens, exp)
+    let
+      val result = Combo.choiceData ([boolExp, typedExp], tokens, exp)
+    in
+      case result of
+        OK _ => result
+      | ERR => OK (tokens, exp)
+    end
 end

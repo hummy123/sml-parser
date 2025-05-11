@@ -40,5 +40,7 @@ struct
   | ANDALSO_EXP of exp * exp
   | ORELSE_EXP of exp * exp
 
+  | TYPED_EXP of exp * type_grm
+
   datatype 'a result = OK of Token.t list * 'a | ERR
 end
