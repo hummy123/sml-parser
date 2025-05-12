@@ -219,9 +219,40 @@ struct
           end)
     | _ => ERR
 
+  and mrule tokens =
+    Combo.next (Pat.startPat tokens, fn (tokens, curPat) =>
+      case tokens of
+        L.EQUAL_ARROW :: tl =>
+          Combo.next (exp tl, fn (tokens, curExp) =>
+            OK (tokens, (curPat, curExp)))
+      | _ => ERR)
+
+  and loopHandlExp (tokens, acc) =
+    case tokens of
+      L.PIPE :: tl =>
+        Combo.next (mrule tl, fn (tokens, matchRow) =>
+          let val acc = matchRow :: acc
+          in loopHandlExp (tokens, acc)
+          end)
+    | _ =>
+        let
+          val acc = List.rev acc
+          val result = HANDLE_EXP acc
+        in
+          OK (tokens, result)
+        end
+
+  and handleExp (tokens, exp1) =
+    case tokens of
+      L.HANDLE :: tl =>
+        Combo.next (mrule tl, fn (tokens, matchRow) =>
+          loopHandlExp (tokens, [matchRow]))
+    | _ => ERR
+
   and afterExp (tokens, exp) =
     let
-      val result = Combo.choiceData ([boolExp, typedExp], tokens, exp)
+      val result =
+        Combo.choiceData ([boolExp, typedExp, handleExp], tokens, exp)
     in
       case result of
         OK _ => result
