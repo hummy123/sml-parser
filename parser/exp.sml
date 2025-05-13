@@ -171,7 +171,14 @@ struct
 
   and infExp tokens = raise Fail ""
 
-  and raiseExp tokens = raise Fail ""
+  and raiseExp tokens =
+    case tokens of
+      L.RAISE :: tl =>
+        Combo.next (exp tl, fn (tokens, raisedExp) =>
+          let val result = RAISE_EXP raisedExp
+          in OK (tokens, result)
+          end)
+    | _ => ERR
 
   and ifExp tokens = raise Fail ""
 

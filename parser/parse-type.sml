@@ -41,6 +41,8 @@ struct
   | ORELSE_EXP of exp * exp
 
   | TYPED_EXP of exp * type_grm
+
+  | RAISE_EXP of exp
   | HANDLE_EXP of (pat * exp) list
 
   datatype 'a result = OK of Token.t list * 'a | ERR
