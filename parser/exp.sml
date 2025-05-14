@@ -180,7 +180,20 @@ struct
           end)
     | _ => ERR
 
-  and ifExp tokens = raise Fail ""
+  and ifExp tokens =
+    case tokens of
+      L.IF :: tl =>
+        Combo.next (exp tl, fn (tokens, predicate) =>
+          case tokens of
+            L.THEN :: tl =>
+              Combo.next (exp tl, fn (tokens, consequent) =>
+                case tokens of
+                  L.ELSE :: tl =>
+                    Combo.next (exp tl, fn (tokens, alternate) =>
+                      OK (tokens, IF_EXP (predicate, consequent, alternate)))
+                | _ => ERR)
+          | _ => ERR)
+    | _ => ERR
 
   and whileExp tokens = raise Fail ""
 
