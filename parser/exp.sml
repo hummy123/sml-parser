@@ -206,7 +206,29 @@ struct
           | _ => ERR)
     | _ => ERR
 
-  and caseExp tokens = raise Fail ""
+  and loopCaseExp (tokens, acc, predicate) =
+    case tokens of
+      L.PIPE :: tl =>
+        Combo.next (mrule tl, fn (tokens, matchRow) =>
+          loopCaseExp (tokens, matchRow :: acc, predicate))
+    | _ =>
+        let
+          val acc = List.rev acc
+          val result = CASE_EXP (predicate, acc)
+        in
+          OK (tokens, result)
+        end
+
+  and caseExp tokens =
+    case tokens of
+      L.CASE :: tl =>
+        Combo.next (exp tl, fn (tokens, predicate) =>
+          case tokens of
+            L.OF :: tl =>
+              Combo.next (mrule tl, fn (tokens, matchRow) =>
+                loopCaseExp (tokens, [matchRow], predicate))
+          | _ => ERR)
+    | _ => ERR
 
   and fnExp tokens = raise Fail ""
 
@@ -260,9 +282,7 @@ struct
     case tokens of
       L.PIPE :: tl =>
         Combo.next (mrule tl, fn (tokens, matchRow) =>
-          let val acc = matchRow :: acc
-          in loopHandlExp (tokens, acc)
-          end)
+          loopHandlExp (tokens, matchRow :: acc))
     | _ =>
         let
           val acc = List.rev acc

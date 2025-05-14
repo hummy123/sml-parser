@@ -102,6 +102,7 @@ struct
     | "if" => IF
     | "then" => THEN
     | "else" => ELSE
+    | "case" => CASE
     | "of" => OF
     | "true" => BOOL true
     | "false" => BOOL false

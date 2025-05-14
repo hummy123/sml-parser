@@ -18,6 +18,7 @@ struct
   | IF
   | THEN
   | ELSE
+  | CASE
   | OF
   | INFIX
   | AS
@@ -70,6 +71,7 @@ struct
     | IF => "if"
     | THEN => "then"
     | ELSE => "else"
+    | CASE => "case"
     | OF => "of"
     | INFIX => "infix"
     | AS => "as"
