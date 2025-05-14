@@ -112,6 +112,8 @@ struct
     | "orelse" => ORELSE
     | "raise" => RAISE
     | "handle" => HANDLE
+    | "while" => WHILE
+    | "do" => DO
     | _ => ID str
 
   fun getPunct str =

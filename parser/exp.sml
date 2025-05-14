@@ -195,7 +195,16 @@ struct
           | _ => ERR)
     | _ => ERR
 
-  and whileExp tokens = raise Fail ""
+  and whileExp tokens =
+    case tokens of
+      L.WHILE :: tl =>
+        Combo.next (exp tl, fn (tokens, predicate) =>
+          case tokens of
+            L.DO :: tl =>
+              Combo.next (exp tl, fn (tokens, action) =>
+                OK (tokens, WHILE_EXP (predicate, action)))
+          | _ => ERR)
+    | _ => ERR
 
   and caseExp tokens = raise Fail ""
 

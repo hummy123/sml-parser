@@ -46,6 +46,7 @@ struct
   | HANDLE_EXP of (pat * exp) list
 
   | IF_EXP of exp * exp * exp
+  | WHILE_EXP of exp * exp
 
   datatype 'a result = OK of Token.t list * 'a | ERR
 end

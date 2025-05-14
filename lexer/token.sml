@@ -1,57 +1,4 @@
-signature TOKEN =
-sig
-  datatype t =
-    INT of int
-  | ID of string
-  | STRING of string
-  | BOOL of bool
-  | TYPE_ID of {isEqType: bool, id: string}
-
-  (* reserved words *)
-  | LET
-  | IN
-  | END
-  | FUN
-  | VAL
-  | TYPE
-  | ARRAY
-  | IF
-  | THEN
-  | ELSE
-  | OF
-  | INFIX
-  | AS
-  | OP
-  | ANDALSO
-  | ORELSE
-  | RAISE
-  | HANDLE
-
-  (* punctuation *)
-  | L_PAREN
-  | R_PAREN
-  | L_BRACKET
-  | R_BRACKET
-  | L_BRACE
-  | R_BRACE
-  | COMMA
-  | COLON
-  | SEMI_COLON
-  | TRIPLE_DOT
-  | WILDCARD
-  | PIPE
-  | EQUAL_ARROW
-  | DASH_ARROW
-  | HASH
-
-  (* singleton dot is not in grammar; maybe remove? *)
-  | DOT
-  | EOF
-
-  val toString: t -> string
-end
-
-structure Token :> TOKEN =
+structure Token =
 struct
   datatype t =
     INT of int
@@ -79,6 +26,8 @@ struct
   | ORELSE
   | RAISE
   | HANDLE
+  | WHILE
+  | DO
 
   (* punctuation *)
   | L_PAREN
@@ -129,6 +78,8 @@ struct
     | ORELSE => "orelse"
     | RAISE => "raise"
     | HANDLE => "handle"
+    | WHILE => "while"
+    | DO => "do"
 
     (* punctuation *)
     | L_PAREN => "("
