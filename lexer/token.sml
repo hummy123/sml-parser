@@ -24,6 +24,7 @@ sig
   | OP
   | ANDALSO
   | ORELSE
+  | RAISE
   | HANDLE
 
   (* punctuation *)
@@ -76,6 +77,7 @@ struct
   | OP
   | ANDALSO
   | ORELSE
+  | RAISE
   | HANDLE
 
   (* punctuation *)
@@ -125,6 +127,7 @@ struct
     | OP => "op"
     | ANDALSO => "andalso"
     | ORELSE => "orelse"
+    | RAISE => "raise"
     | HANDLE => "handle"
 
     (* punctuation *)

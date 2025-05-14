@@ -110,6 +110,7 @@ struct
     | "op" => OP
     | "andalso" => ANDALSO
     | "orelse" => ORELSE
+    | "raise" => RAISE
     | "handle" => HANDLE
     | _ => ID str
 
