@@ -44,10 +44,11 @@ struct
 
   | RAISE_EXP of exp
   | HANDLE_EXP of (pat * exp) list
+  | WHILE_EXP of exp * exp
 
   | IF_EXP of exp * exp * exp
-  | WHILE_EXP of exp * exp
   | CASE_EXP of exp * (pat * exp) list
+  | FN_EXP of (pat * exp) list
 
   datatype 'a result = OK of Token.t list * 'a | ERR
 end

@@ -169,7 +169,7 @@ struct
       OK (tokens, exp) => loopAppExp (tokens, [exp])
     | ERR => ERR
 
-  and infExp tokens = raise Fail ""
+  and infixExp tokens = raise Fail ""
 
   and raiseExp tokens =
     case tokens of
@@ -230,12 +230,30 @@ struct
           | _ => ERR)
     | _ => ERR
 
-  and fnExp tokens = raise Fail ""
+  and loopFnExp (tokens, acc) =
+    case tokens of
+      L.PIPE :: tl =>
+        Combo.next (mrule tl, fn (tokens, matchRow) =>
+          loopFnExp (tokens, matchRow :: acc))
+    | _ =>
+        let
+          val acc = List.rev acc
+          val result = FN_EXP acc
+        in
+          OK (tokens, result)
+        end
+
+  and fnExp tokens =
+    case tokens of
+      L.FN :: tl =>
+        Combo.next (mrule tl, fn (tokens, matchRow) =>
+          loopFnExp (tokens, [matchRow]))
+    | _ => ERR
 
   and exp tokens : exp result =
     let
       val result = Combo.choice
-        ([infExp, raiseExp, ifExp, whileExp, caseExp, fnExp], tokens)
+        ([infixExp, raiseExp, ifExp, whileExp, caseExp, fnExp], tokens)
     in
       case result of
         OK (tokens, exp) => afterExp (tokens, exp)

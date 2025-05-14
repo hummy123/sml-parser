@@ -115,6 +115,7 @@ struct
     | "handle" => HANDLE
     | "while" => WHILE
     | "do" => DO
+    | "fn" => FN
     | _ => ID str
 
   fun getPunct str =

@@ -29,6 +29,7 @@ struct
   | HANDLE
   | WHILE
   | DO
+  | FN
 
   (* punctuation *)
   | L_PAREN
@@ -82,6 +83,7 @@ struct
     | HANDLE => "handle"
     | WHILE => "while"
     | DO => "do"
+    | FN => "fn"
 
     (* punctuation *)
     | L_PAREN => "("
