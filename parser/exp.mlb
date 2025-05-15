@@ -3,6 +3,7 @@ $(SML_LIB)/basis/basis.mlb
 ../vendored/brolib-sml/src/gap_map.sml
 ../lexer/lex.mlb
 
+../parser/string-map.sml
 ../parser/parse-type.sml
 ../parser/combo.sml
 ../parser/type.sml

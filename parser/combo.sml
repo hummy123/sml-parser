@@ -22,6 +22,16 @@ struct
         end
     | [] => ERR
 
+  fun choiceData2 (funList, tokens, data1, data2) =
+    case funList of
+      f :: tl =>
+        let in
+          case f (tokens, data1, data2) of
+            ERR => choiceData2 (tl, tokens, data1, data2)
+          | (result as OK _) => result
+        end
+    | [] => ERR
+
   fun next (result, f) =
     case result of
       OK (tokens, data) => f (tokens, data)
