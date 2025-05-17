@@ -2,6 +2,9 @@ structure Exp =
 struct
   open ParseType
 
+  exception Az of exp list
+  exception Aa of exp
+
   structure L = Lexer
   structure StringMap = StringMap
 
@@ -181,7 +184,10 @@ struct
         let in
           case StringMap.get (id, infixMap) of
             NONE => precedenceFunApplication (tl, infixMap, hd :: astList)
-          | SOME _ => let val acc = List.rev astList in (tl, APP_EXP acc) end
+          | SOME _ =>
+              let val acc = List.rev astList
+              in (expList, APP_EXP acc)
+              end
         end
     | hd :: tl => precedenceFunApplication (tl, infixMap, hd :: astList)
     | [] =>
@@ -222,8 +228,25 @@ struct
             SOME {isLeft = isOptLeft, power = optPower} =>
               (* outer while loop *)
               if optPower >= minPower then
-                let val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
-                in helpClimb (rhs, tl, optPower, isOptLeft, infixMap)
+                let
+                  val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
+
+                  (* unwrap APP_EXP if APP_EXP has a list with a single element *)
+                  val lhs =
+                    case lhs of
+                      APP_EXP [one] => one
+                    | _ => lhs
+                  val rhs =
+                    case rhs of
+                      APP_EXP [one] => one
+                    | _ => rhs
+
+                  val rhs = APP_EXP [EXP_VAL_ID opt, lhs, rhs]
+
+                  val (expList, rhs) = helpClimb
+                    (rhs, tl, optPower, isOptLeft, infixMap)
+                in
+                  climb (rhs, expList, infixMap, minPower)
                 end
               else
                 (expList, lhs)
@@ -236,7 +259,7 @@ struct
       OK (tokens, expList) =>
         let
           val (tl, lhs) = precedenceFunApplication (expList, infixMap, [])
-          val (_, finalExp) = climb (lhs, tl, infixMap, 0)
+          val (aa, finalExp) = climb (lhs, tl, infixMap, 0)
         in
           OK (tokens, finalExp)
         end
@@ -404,10 +427,11 @@ end
 
 fun main () =
   let
-    val expr = "1 + 2 + 3"
+    val expr = "1 + 2 - 3"
     val tokens = Lexer.getTokens expr
 
     val map = StringMap.add ("+", {isLeft = true, power = 1}, StringMap.empty)
+    val map = StringMap.add ("-", {isLeft = true, power = 1}, map)
   in
     Exp.infixExp (tokens, map)
   end
