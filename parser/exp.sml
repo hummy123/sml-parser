@@ -3,6 +3,7 @@ struct
   open ParseType
 
   structure L = Lexer
+  structure StringMap = StringMap
 
   fun scon (tokens, _) =
     case tokens of
@@ -166,8 +167,9 @@ struct
       OK (tokens, exp) => loopAppExp (tokens, exp :: acc, infixMap)
     | ERR => OK (tokens, List.rev acc)
 
-  and appExp (tokens, infixMap) =
-    case atExp tokens of
+  and appExp
+    (tokens: L.t list, infixMap: {isLeft: bool, power: int} StringMap.t) =
+    case atExp (tokens, infixMap) of
       OK (tokens, exp) => loopAppExp (tokens, [exp], infixMap)
     | ERR => ERR
 
@@ -175,26 +177,25 @@ struct
    * and turn whole result into an APP_EXP at the end *)
   and precedenceFunApplication (expList, infixMap, astList) =
     case expList of
-      EXP_VAL_ID id :: tl =>
+      (hd as EXP_VAL_ID id) :: tl =>
         let in
-          case StringMap.get (infixMap, id) of
+          case StringMap.get (id, infixMap) of
             NONE => precedenceFunApplication (tl, infixMap, hd :: astList)
-          | SOME _ => let val acc = List.rev acc in (tl, APP_EXP acc) end
-          | _ => precedenceFunApplication (tl, infixMap, hd :: astList)
+          | SOME _ => let val acc = List.rev astList in (tl, APP_EXP acc) end
         end
     | hd :: tl => precedenceFunApplication (tl, infixMap, hd :: astList)
     | [] =>
         let in
-          case acc of
+          case astList of
             [hd] => ([], hd)
-          | _ => ([], APP_EXP (List.rev acc))
+          | _ => ([], APP_EXP (List.rev astList))
         end
 
   and helpClimb (rhs, expList, optPower, isOptLeft, infixMap) =
     case expList of
       EXP_VAL_ID lookahead :: tl =>
         let in
-          case InfixMap.get (lookahead, infixMap) of
+          case StringMap.get (lookahead, infixMap) of
             SOME {isLeft = isAheadLeft, power = aheadPower} =>
               if
                 aheadPower > optPower
@@ -217,7 +218,7 @@ struct
     case expList of
       EXP_VAL_ID opt :: tl =>
         let in
-          case InfixMap.get (opt, infixMap) of
+          case StringMap.get (opt, infixMap) of
             SOME {isLeft = isOptLeft, power = optPower} =>
               (* outer while loop *)
               if optPower >= minPower then
@@ -230,11 +231,14 @@ struct
         end
     | _ => (expList, lhs)
 
-  and infixExp (tokens, infixMap) =
+  and infixExp (tokens, infixMap) : exp result =
     case appExp (tokens, infixMap) of
       OK (tokens, expList) =>
-        let val finalExp = climb (expList, infixMap)
-        in OK (tokens, finalExp)
+        let
+          val (tl, lhs) = precedenceFunApplication (expList, infixMap, [])
+          val (_, finalExp) = climb (lhs, tl, infixMap, 0)
+        in
+          OK (tokens, finalExp)
         end
     | ERR => ERR
 
@@ -397,3 +401,13 @@ struct
       | ERR => OK (tokens, exp)
     end
 end
+
+fun main () =
+  let
+    val expr = "1 + 2 + 3"
+    val tokens = Lexer.getTokens expr
+
+    val map = StringMap.add ("+", {isLeft = true, power = 1}, StringMap.empty)
+  in
+    Exp.infixExp (tokens, map)
+  end
