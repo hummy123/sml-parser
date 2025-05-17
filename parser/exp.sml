@@ -164,14 +164,79 @@ struct
   and loopAppExp (tokens, acc, infixMap) =
     case atExp (tokens, infixMap) of
       OK (tokens, exp) => loopAppExp (tokens, exp :: acc, infixMap)
-    | ERR => OK (tokens, APP_EXP (List.rev acc))
+    | ERR => OK (tokens, List.rev acc)
 
   and appExp (tokens, infixMap) =
     case atExp tokens of
       OK (tokens, exp) => loopAppExp (tokens, [exp], infixMap)
     | ERR => ERR
 
-  and infixExp tokens = raise Fail ""
+  (* keep consuming expressions until we hit an infix opreator
+   * and turn whole result into an APP_EXP at the end *)
+  and precedenceFunApplication (expList, infixMap, astList) =
+    case expList of
+      EXP_VAL_ID id :: tl =>
+        let in
+          case StringMap.get (infixMap, id) of
+            NONE => precedenceFunApplication (tl, infixMap, hd :: astList)
+          | SOME _ => let val acc = List.rev acc in (tl, APP_EXP acc) end
+          | _ => precedenceFunApplication (tl, infixMap, hd :: astList)
+        end
+    | hd :: tl => precedenceFunApplication (tl, infixMap, hd :: astList)
+    | [] =>
+        let in
+          case acc of
+            [hd] => ([], hd)
+          | _ => ([], APP_EXP (List.rev acc))
+        end
+
+  and helpClimb (rhs, expList, optPower, isOptLeft, infixMap) =
+    case expList of
+      EXP_VAL_ID lookahead :: tl =>
+        let in
+          case InfixMap.get (lookahead, infixMap) of
+            SOME {isLeft = isAheadLeft, power = aheadPower} =>
+              if
+                aheadPower > optPower
+                orelse (not isAheadLeft andalso aheadPower = optPower)
+              then
+                let
+                  val nextPower =
+                    if aheadPower > optPower then optPower + 1 else optPower
+                  val (expList, rhs) = climb (rhs, tl, infixMap, nextPower)
+                in
+                  helpClimb (rhs, expList, optPower, isOptLeft, infixMap)
+                end
+              else
+                (expList, rhs)
+          | NONE => (expList, rhs)
+        end
+    | _ => (expList, rhs)
+
+  and climb (lhs, expList, infixMap, minPower) =
+    case expList of
+      EXP_VAL_ID opt :: tl =>
+        let in
+          case InfixMap.get (opt, infixMap) of
+            SOME {isLeft = isOptLeft, power = optPower} =>
+              (* outer while loop *)
+              if optPower >= minPower then
+                let val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
+                in helpClimb (rhs, tl, optPower, isOptLeft, infixMap)
+                end
+              else
+                (expList, lhs)
+          | NONE => (expList, lhs)
+        end
+    | _ => (expList, lhs)
+
+  and infixExp (tokens, infixMap) =
+    case appExp (tokens, infixMap) of
+      OK (tokens, expList) =>
+        let val finalExp = climb (expList, infixMap)
+        in OK (tokens, finalExp)
+        end
+    | ERR => ERR
 
   and raiseExp (tokens, infixMap) =
     case tokens of

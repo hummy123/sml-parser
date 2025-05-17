@@ -7,5 +7,5 @@ struct
    * `infixr 1 -` for right-associative infix operators with binding power of 1
    * When a function is declared non-fix, it is deleted from the infixMap.
    * *)
-   type t = {isLeft: bool, power: int}
+  type t = {isLeft: bool, power: int}
 end
