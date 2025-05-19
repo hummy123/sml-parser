@@ -209,7 +209,9 @@ struct
 
                   val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
                   val (tl, rhs) = climb (rhs, tl, infixMap, nextMinPower)
-                  val expResult = APP_EXP [EXP_VAL_ID opt, lhs, rhs]
+
+                  val arg = RECORD_EXP [("1", lhs), ("2", rhs)]
+                  val expResult = APP_EXP [EXP_VAL_ID opt, arg]
                 in
                   climb (expResult, tl, infixMap, nextMinPower)
                 end
