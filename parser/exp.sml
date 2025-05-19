@@ -178,47 +178,21 @@ struct
 
   (* keep consuming expressions until we hit an infix opreator
    * and turn whole result into an APP_EXP at the end *)
+  and finishPrecedenceFunApp (expList, result) =
+    case result of
+      [one] => (expList, one)
+    | _ => let val result = List.rev result in (expList, APP_EXP result) end
+
   and precedenceFunApplication (expList, infixMap, astList) =
     case expList of
       (hd as EXP_VAL_ID id) :: tl =>
         let in
           case StringMap.get (id, infixMap) of
             NONE => precedenceFunApplication (tl, infixMap, hd :: astList)
-          | SOME _ =>
-              let val acc = List.rev astList
-              in (expList, APP_EXP acc)
-              end
+          | SOME _ => finishPrecedenceFunApp (expList, List.rev astList)
         end
     | hd :: tl => precedenceFunApplication (tl, infixMap, hd :: astList)
-    | [] =>
-        let in
-          case astList of
-            [hd] => ([], hd)
-          | _ => ([], APP_EXP (List.rev astList))
-        end
-
-  and helpClimb (rhs, expList, optPower, isOptLeft, infixMap) =
-    case expList of
-      EXP_VAL_ID lookahead :: tl =>
-        let in
-          case StringMap.get (lookahead, infixMap) of
-            SOME {isLeft = isAheadLeft, power = aheadPower} =>
-              if
-                aheadPower > optPower
-                orelse (not isAheadLeft andalso aheadPower = optPower)
-              then
-                let
-                  val nextPower =
-                    if aheadPower > optPower then optPower + 1 else optPower
-                  val (expList, rhs) = climb (rhs, tl, infixMap, nextPower)
-                in
-                  helpClimb (rhs, expList, optPower, isOptLeft, infixMap)
-                end
-              else
-                (expList, rhs)
-          | NONE => (expList, rhs)
-        end
-    | _ => (expList, rhs)
+    | [] => finishPrecedenceFunApp (expList, astList)
 
   and climb (lhs, expList, infixMap, minPower) =
     case expList of
@@ -226,40 +200,37 @@ struct
         let in
           case StringMap.get (opt, infixMap) of
             SOME {isLeft = isOptLeft, power = optPower} =>
-              (* outer while loop *)
-              if optPower >= minPower then
-                let
-                  val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
-
-                  (* unwrap APP_EXP if APP_EXP has a list with a single element *)
-                  val lhs =
-                    case lhs of
-                      APP_EXP [one] => one
-                    | _ => lhs
-                  val rhs =
-                    case rhs of
-                      APP_EXP [one] => one
-                    | _ => rhs
-
-                  val rhs = APP_EXP [EXP_VAL_ID opt, lhs, rhs]
-
-                  val (expList, rhs) = helpClimb
-                    (rhs, tl, optPower, isOptLeft, infixMap)
-                in
-                  climb (rhs, expList, infixMap, minPower)
-                end
-              else
+              if optPower < minPower then
                 (expList, lhs)
-          | NONE => (expList, lhs)
+              else
+                let
+                  val nextMinPower =
+                    if isOptLeft then optPower + 1 else optPower
+
+                  val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
+                  val (tl, rhs) = climb (rhs, tl, infixMap, nextMinPower)
+                  val expResult = APP_EXP [EXP_VAL_ID opt, lhs, rhs]
+                in
+                  climb (expResult, tl, infixMap, nextMinPower)
+                end
+          | NONE => raise Fail "exp.sml 270: expected EXP_VAL_ID to be infix"
         end
     | _ => (expList, lhs)
+
+  and loopClimb (lhs, expList, infixMap) =
+    case expList of
+      [] => lhs
+    | _ =>
+        let val (expList, lhs) = climb (lhs, expList, infixMap, 0)
+        in loopClimb (lhs, expList, infixMap)
+        end
 
   and infixExp (tokens, infixMap) : exp result =
     case appExp (tokens, infixMap) of
       OK (tokens, expList) =>
         let
-          val (tl, lhs) = precedenceFunApplication (expList, infixMap, [])
-          val (aa, finalExp) = climb (lhs, tl, infixMap, 0)
+          val (expList, lhs) = precedenceFunApplication (expList, infixMap, [])
+          val finalExp = loopClimb (lhs, expList, infixMap)
         in
           OK (tokens, finalExp)
         end
@@ -427,11 +398,11 @@ end
 
 fun main () =
   let
-    val expr = "1 + 2 - 3"
+    val expr = "1 + 2 * 3"
     val tokens = Lexer.getTokens expr
 
     val map = StringMap.add ("+", {isLeft = true, power = 1}, StringMap.empty)
-    val map = StringMap.add ("-", {isLeft = true, power = 1}, map)
+    val map = StringMap.add ("*", {isLeft = true, power = 2}, map)
   in
     Exp.infixExp (tokens, map)
   end
