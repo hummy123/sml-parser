@@ -193,7 +193,7 @@ struct
         let in
           case StringMap.get (id, infixMap) of
             NONE => precedenceFunApplication (tl, infixMap, hd :: astList)
-          | SOME _ => finishPrecedenceFunApp (expList, List.rev astList)
+          | SOME _ => finishPrecedenceFunApp (expList, astList)
         end
     | hd :: tl => precedenceFunApplication (tl, infixMap, hd :: astList)
     | [] => finishPrecedenceFunApp (expList, astList)
@@ -272,7 +272,7 @@ struct
       OK (tokens, expList) =>
         let in
           case precedenceFunApplication (expList, infixMap, []) of
-            SOME (tl, lhs) =>
+            SOME (expList, lhs) =>
               let val finalExp = startClimb (lhs, expList, infixMap)
               in OK (tokens, finalExp)
               end
