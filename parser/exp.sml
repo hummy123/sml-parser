@@ -224,14 +224,7 @@ struct
                         val arg = RECORD_EXP [("1", lhs), ("2", rhs)]
                         val expResult = APP_EXP [EXP_VAL_ID opt, arg]
                       in
-                        climb
-                          ( expResult
-                          , tl
-                          , infixMap
-                          , nextMinPower
-                          , prevPower
-                          , wasPrevLeft
-                          )
+                        (tl, expResult, prevPower, wasPrevLeft)
                       end
                   | NONE => raise Fail "exp.sml 218: expected value/expression"
                 end
