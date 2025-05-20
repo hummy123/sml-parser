@@ -244,6 +244,15 @@ struct
 
   and startClimb (lhs, expList, infixMap) =
     let
+      (* Standard ML requires a compile error when there are two consecutive
+       * infix operators with same precedence but different associativity.
+       * The `prevPower` and `wasPrevLeft` arguments passed 
+       * to the climb function help detect this case.
+       * However, such a failure should be impossible during our initial call
+       * to the climb function.
+       * We pass in `~1` as the `prevPower` in our initiall call to `climb`
+       * which guarantees that the failure is not triggered in the initial call
+       * since SML infix operators must have binding powers between 0 and 9. *)
       val (expList, lhs, prevPower, wasPrevLeft) = climb
         (lhs, expList, infixMap, 0, ~1, true)
     in
