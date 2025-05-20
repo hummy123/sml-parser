@@ -180,8 +180,12 @@ struct
    * and turn whole result into an APP_EXP at the end *)
   and finishPrecedenceFunApp (expList, result) =
     case result of
-      [one] => (expList, one)
-    | _ => let val result = List.rev result in (expList, APP_EXP result) end
+      [one] => SOME (expList, one)
+    | [] => NONE
+    | _ =>
+        let val result = List.rev result
+        in SOME (expList, APP_EXP result)
+        end
 
   and precedenceFunApplication (expList, infixMap, astList) =
     case expList of
@@ -210,22 +214,26 @@ struct
                 let
                   val nextMinPower =
                     if isOptLeft then optPower + 1 else optPower
-
-                  val (tl, rhs) = precedenceFunApplication (tl, infixMap, [])
-                  val (tl, rhs, prevPower, wasPrevLeft) = climb
-                    (rhs, tl, infixMap, nextMinPower, optPower, isOptLeft)
-
-                  val arg = RECORD_EXP [("1", lhs), ("2", rhs)]
-                  val expResult = APP_EXP [EXP_VAL_ID opt, arg]
                 in
-                  climb
-                    ( expResult
-                    , tl
-                    , infixMap
-                    , nextMinPower
-                    , prevPower
-                    , wasPrevLeft
-                    )
+                  case precedenceFunApplication (tl, infixMap, []) of
+                    SOME (tl, rhs) =>
+                      let
+                        val (tl, rhs, prevPower, wasPrevLeft) = climb
+                          (rhs, tl, infixMap, nextMinPower, optPower, isOptLeft)
+
+                        val arg = RECORD_EXP [("1", lhs), ("2", rhs)]
+                        val expResult = APP_EXP [EXP_VAL_ID opt, arg]
+                      in
+                        climb
+                          ( expResult
+                          , tl
+                          , infixMap
+                          , nextMinPower
+                          , prevPower
+                          , wasPrevLeft
+                          )
+                      end
+                  | NONE => raise Fail "exp.sml 218: expected value/expression"
                 end
           | NONE => raise Fail "exp.sml 270: expected EXP_VAL_ID to be infix"
         end
@@ -262,11 +270,13 @@ struct
   and infixExp (tokens, infixMap) : exp result =
     case appExp (tokens, infixMap) of
       OK (tokens, expList) =>
-        let
-          val (expList, lhs) = precedenceFunApplication (expList, infixMap, [])
-          val finalExp = startClimb (lhs, expList, infixMap)
-        in
-          OK (tokens, finalExp)
+        let in
+          case precedenceFunApplication (expList, infixMap, []) of
+            SOME (tl, lhs) =>
+              let val finalExp = startClimb (lhs, expList, infixMap)
+              in OK (tokens, finalExp)
+              end
+          | NONE => raise Fail "exp.sml 280: expected expression or value"
         end
     | ERR => ERR
 
