@@ -97,6 +97,8 @@ struct
     | "end" => END
     | "fun" => FUN
     | "val" => VAL
+    | "rec" => REC
+    | "and" => AND
     | "type" => TYPE
     | "array" => ARRAY
     | "if" => IF

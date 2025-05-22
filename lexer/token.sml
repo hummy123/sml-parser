@@ -13,6 +13,8 @@ struct
   | END
   | FUN
   | VAL
+  | REC
+  | AND
   | TYPE
   | ARRAY
   | IF
@@ -67,6 +69,8 @@ struct
     | END => "end"
     | FUN => "fun"
     | VAL => "val"
+    | REC => "rec"
+    | AND => "and"
     | TYPE => "type"
     | ARRAY => "array"
     | IF => "if"

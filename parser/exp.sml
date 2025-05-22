@@ -8,6 +8,9 @@ struct
   structure L = Lexer
   structure StringMap = StringMap
 
+
+  (* EXPRESSIONS *)
+
   fun scon (tokens, _) =
     case tokens of
       L.INT num :: tl => OK (tl, INT_EXP num)
@@ -431,6 +434,31 @@ struct
         OK _ => result
       | ERR => OK (tokens, exp)
     end
+
+
+  (* DECLARATIONS *)
+
+  and valbind (tokens, infixMap) =
+    let
+      val (tl, isRec) =
+        case tokens of
+          L.REC :: tl => (tl, true)
+        | _ => (tokens, false)
+    in
+      Combo.next (Pat.startPat tl, fn (tokens, newPat) =>
+        case tokens of
+          L.ID "=" :: tl =>
+            Combo.next (exp (tl, infixMap), fn (tokens, newExp) =>
+              case tokens of
+                L.AND :: tl => valbind (tl, infixMap)
+              | _ => raise Fail "exp.sml 445: finished parsing val")
+        | _ => ERR)
+    end
+
+  and startValBind (tokens, infixMap) =
+    case tokens of
+      L.VAL :: tl => valbind (tl, infixMap)
+    | _ => ERR
 end
 
 fun main () =
