@@ -177,4 +177,22 @@ struct
                 | ERR => OK (tokens, typ)
               end
         end
+
+  fun multiTyVarSeq (tokens, acc) =
+    case tokens of
+      L.COMMA :: tl =>
+        Combo.next (tyvar tl, fn (tokens, newTy) =>
+          multiTyVarSeq (tokens, newTy :: acc))
+    | L.R_PAREN :: tl => OK (tl, List.rev acc)
+    | _ => ERR
+
+  fun tyVarSeq tokens : type_grm list result =
+    case tokens of
+      L.L_PAREN :: tl =>
+        Combo.next (tyvar tl, fn (tokens, newTy) =>
+          multiTyVarSeq (tokens, [newTy]))
+    | _ =>
+        (case tyvar tokens of
+           OK (tokens, newTy) => OK (tokens, [newTy])
+         | ERR => ERR)
 end

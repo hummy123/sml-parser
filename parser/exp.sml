@@ -463,11 +463,13 @@ end
 
 fun main () =
   let
-    val expr = "1 + 2 * 3"
+    val expr = "('a, 'b, 'c)"
     val tokens = Lexer.getTokens expr
-
-    val map = StringMap.add ("+", {isLeft = true, power = 1}, StringMap.empty)
-    val map = StringMap.add ("*", {isLeft = true, power = 1}, map)
   in
-    Exp.infixExp (tokens, map)
+    case Type.tyVarSeq tokens of
+      ParseType.OK (tokens, _) =>
+        print ("ok: " ^ Int.toString (List.length tokens) ^ "\n")
+    | _ => print "err\n"
   end
+
+val () = main ()
