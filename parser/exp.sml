@@ -467,7 +467,7 @@ struct
                     valbind (tl, infixMap, [], acc)
                 | _ => OK (tokens, makeSeqDec (List.rev acc))
               end)
-        | hd :: _ => (print (L.toString hd); ERR)
+        | hd :: _ => (print ("exp.sml 470: " ^ L.toString hd ^ "\n"); ERR)
         | _ => ERR)
     end
 
@@ -482,7 +482,7 @@ end
 
 fun main () =
   let
-    val expr = "val a = (1, 2) and b = 3 and c = (5, 7)"
+    val expr = "val a : int = 3"
     val tokens = Lexer.getTokens expr
   in
     case Exp.startValBind (tokens, StringMap.empty) of

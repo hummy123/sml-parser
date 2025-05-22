@@ -12,7 +12,9 @@ struct
 
   fun tyrow (tokens, acc) =
     case tokens of
-      L.ID fieldName :: L.COLON :: tl =>
+      L.ID "=" :: _ =>
+        raise Fail "type.sml 16: expected identifier but got = equals sign"
+    | L.ID fieldName :: L.COLON :: tl =>
         Combo.next (ty tl, fn (tokens, tyval) =>
           let
             val acc = (fieldName, tyval) :: acc
@@ -117,17 +119,18 @@ struct
     case tokens of
       L.DOT :: L.ID id :: tl =>
         if id = "*" then raise Fail "type.sml 167: * disallowed in tycon"
+        else if id = "=" then ERR (* expected identifier but got = *)
         else loopLongTycon (tl, acc ^ "." ^ id, tyvars)
     | _ =>
         let val result = TY_CON {tyseq = tyvars, con = acc}
         in OK (tokens, result)
         end
 
-  and startLongTycon (tokens, tyvars) =
+  and startLongTycon (tkens, tyvars) =
     case tokens of
-      L.ID id :: tl =>
-        if id = "*" then raise Fail "type.sml 181: * disallowed in tycon"
-        else loopLongTycon (tl, id, tyvars)
+      L.ID "*" :: tl => raise Fail "type.sml 181: * disallowed in tycon"
+    | L.ID "=" :: tl => ERR (* expected identifier but got = *)
+    | L.ID id :: tl => loopLongTycon (tl, id, tyvars)
     | _ => ERR
 
   and loopTyseqLongtycon (tokens, acc) =
