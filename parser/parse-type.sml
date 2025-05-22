@@ -50,5 +50,10 @@ struct
   | CASE_EXP of exp * (pat * exp) list
   | FN_EXP of (pat * exp) list
 
+  and dec =
+    VAL of type_grm list * pat * exp
+  | VAL_REC of type_grm list * pat * exp
+  | SEQ_DEC of dec list
+
   datatype 'a result = OK of Token.t list * 'a | ERR
 end

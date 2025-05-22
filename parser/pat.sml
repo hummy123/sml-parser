@@ -4,11 +4,6 @@ struct
 
   structure L = Lexer
 
-  fun ifOK (f, result) =
-    case result of
-      ERR => ERR
-    | OK (tokens, _) => f tokens
-
   fun tryOrDefault (f, exp, tokens) =
     case f (tokens, exp) of
       ERR => (tokens, exp)
@@ -232,18 +227,7 @@ struct
       , tokens
       )
 
-  and constructedPattern tokens =
-    let
-      val longvidResult = longvidOrOpLongvid tokens
-      val atpatResult = ifOK (atpat, longvidResult)
-    in
-      case (longvidResult, atpatResult) of
-        (ERR, _) => ERR
-      | (_, ERR) => ERR
-      | (OK (_, ID_PAT constructor), OK (tokens, atpat)) =>
-          OK (tokens, CONSTRUCTED_PAT (constructor, atpat))
-      | _ => raise Fail "90"
-    end
+  and constructedPattern tokens = ERR
 
   and typedPattern (tokens, exp) =
     case tokens of
@@ -255,23 +239,7 @@ struct
         end
     | _ => ERR
 
-  and infixedValueConstruction (tokens, exp) =
-    let
-      val vidExp = vid tokens
-      val pat2 = ifOK (pat, vidExp)
-    in
-      case (vidExp, pat2) of
-        (OK (_, ID_PAT vid), OK (tokens, pat2)) =>
-          let
-            val record = RECORD_PAT [("1", exp), ("2", pat2)]
-            val constructedPat = CONSTRUCTED_PAT (vid, record)
-          in
-            OK (tokens, constructedPat)
-          end
-      | (ERR, _) => ERR
-      | (_, ERR) => ERR
-      | _ => raise Fail "142"
-    end
+  and infixedValueConstruction (tokens, exp) = ERR
 
   and typedPatLoop (tokens, exp) =
     case typedPattern (tokens, exp) of

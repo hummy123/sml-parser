@@ -438,7 +438,16 @@ struct
 
   (* DECLARATIONS *)
 
-  and valbind (tokens, infixMap) =
+  and getCurVal (isRec, tyVars, newPat, newExp) =
+    if isRec then VAL_REC (tyVars, newPat, newExp)
+    else VAL (tyVars, newPat, newExp)
+
+  and makeSeqDec decs =
+    case decs of
+      [one] => one
+    | _ => SEQ_DEC decs
+
+  and valbind (tokens, infixMap, tyVars, acc) =
     let
       val (tl, isRec) =
         case tokens of
@@ -449,24 +458,34 @@ struct
         case tokens of
           L.ID "=" :: tl =>
             Combo.next (exp (tl, infixMap), fn (tokens, newExp) =>
-              case tokens of
-                L.AND :: tl => valbind (tl, infixMap)
-              | _ => raise Fail "exp.sml 445: finished parsing val")
+              let
+                val acc = getCurVal (isRec, tyVars, newPat, newExp) :: acc
+              in
+                case tokens of
+                  L.AND :: tl =>
+                    (* do not pass tyVars after initial val dec *)
+                    valbind (tl, infixMap, [], acc)
+                | _ => OK (tokens, makeSeqDec (List.rev acc))
+              end)
+        | hd :: _ => (print (L.toString hd); ERR)
         | _ => ERR)
     end
 
   and startValBind (tokens, infixMap) =
     case tokens of
-      L.VAL :: tl => valbind (tl, infixMap)
+      L.VAL :: tl =>
+        (case Type.tyVarSeq tokens of
+           OK (tl, tyVars) => valbind (tl, infixMap, tyVars, [])
+         | ERR => valbind (tl, infixMap, [], []))
     | _ => ERR
 end
 
 fun main () =
   let
-    val expr = "('a, 'b, 'c)"
+    val expr = "val a = (1, 2) and b = 3 and c = (5, 7)"
     val tokens = Lexer.getTokens expr
   in
-    case Type.tyVarSeq tokens of
+    case Exp.startValBind (tokens, StringMap.empty) of
       ParseType.OK (tokens, _) =>
         print ("ok: " ^ Int.toString (List.length tokens) ^ "\n")
     | _ => print "err\n"
