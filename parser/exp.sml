@@ -462,9 +462,7 @@ struct
                 val acc = getCurVal (isRec, tyVars, newPat, newExp) :: acc
               in
                 case tokens of
-                  L.AND :: tl =>
-                    (* do not pass tyVars after initial val dec *)
-                    valbind (tl, infixMap, [], acc)
+                  L.AND :: tl => valbind (tl, infixMap, tyVars, acc)
                 | _ => OK (tokens, makeSeqDec (List.rev acc))
               end)
         | hd :: _ => (print ("exp.sml 470: " ^ L.toString hd ^ "\n"); ERR)
