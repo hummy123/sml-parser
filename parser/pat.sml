@@ -21,7 +21,7 @@ struct
     | L.BOOL b :: tl => OK (tl, BOOL_PAT b)
     | _ => ERR
 
-  fun wilcard tokens =
+  fun wildcard tokens =
     case tokens of
       L.WILDCARD :: tl => OK (tl, WILDCARD_PAT)
     | _ => ERR
@@ -214,7 +214,7 @@ struct
 
   and atpat tokens =
     Combo.choice
-      ( [ wilcard
+      ( [ wildcard
         , scon
         , longvidOrOpLongvid
         , startRecordPat
