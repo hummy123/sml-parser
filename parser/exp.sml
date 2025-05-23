@@ -474,7 +474,7 @@ struct
   and startValBind (tokens, infixMap) =
     case tokens of
       L.VAL :: tl =>
-        (case Type.tyVarSeq tokens of
+        (case Type.tyVarSeq tl of
            OK (tl, tyVars) => valbind (tl, infixMap, tyVars, [])
          | ERR => valbind (tl, infixMap, [], []))
     | _ => ERR
@@ -482,7 +482,7 @@ end
 
 fun main () =
   let
-    val expr = "val a : int = 3"
+    val expr = "val ('a, 'b) a : int = 3"
     val tokens = Lexer.getTokens expr
   in
     case Exp.startValBind (tokens, StringMap.empty) of

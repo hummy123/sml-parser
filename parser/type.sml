@@ -126,7 +126,7 @@ struct
         in OK (tokens, result)
         end
 
-  and startLongTycon (tkens, tyvars) =
+  and startLongTycon (tokens, tyvars) =
     case tokens of
       L.ID "*" :: tl => raise Fail "type.sml 181: * disallowed in tycon"
     | L.ID "=" :: tl => ERR (* expected identifier but got = *)
