@@ -2,6 +2,11 @@
 
 ## todo
 
+Lexer:
+- [ ] Reverse DFAs
+  - [x] IdDfa
+  - [ ] TypeIdDfa
+
 Patterns:
 
 - [ ] Constructed pattern
