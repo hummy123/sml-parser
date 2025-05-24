@@ -81,20 +81,20 @@ struct
               raise Fail
                 "expected \\u escape sequence to be betwen \\u0000 and \\u00FF"
 
-          | chr :: tl =>
+          | #"^" :: chr :: tl =>
+              (* control code *)
               let
                 val chrCode = Char.ord chr
-                val ctrlCode = chrCode - 64
+                val cntrlCode = chrCode - 64
+                val isCntrl =
+                  chrCode >= 64 andalso chrCode <= 95
+                  andalso Char.isCntrl (Char.chr cntrlCode)
               in
-                if chrCode >= 64 andalso Char.isCntrl (Char.chr ctrlCode) then
-                  (* get control code if there is one *)
-                  Char.chr ctrlCode :: tl
-                else if Char.isDigit chr then
-                  (* get digit as in \ddd if possible *)
-                  escapeThreeDigits (chr, tl)
-                else
-                  charList
+                if isCntrl then Char.chr cntrlCode :: tl
+                else raise Fail "expected control code like ^H"
               end
+          | chr :: tl =>
+              if Char.isDigit chr then escapeThreeDigits (chr, tl) else charList
           | _ => charList
         end
     | _ => charList
@@ -118,7 +118,8 @@ struct
         else
           (* error: found non-formatting char *)
           raise Fail
-            ("expected formatting char but found " ^ String.implode [chr])
+            ("expected formatting char but found " ^ String.implode [chr]
+             ^ " at pos (" ^ Int.toString pos ^ ")")
       end
 
   fun skipFormattingChars (pos, str, acc) =
@@ -133,15 +134,16 @@ struct
       let
         val chr = String.sub (str, pos)
       in
-        if chr = #"\"" then
-          (pos, String.implode acc)
-        else
-          let
-            val acc = escapeFrontChars (chr :: acc)
-            val pos = skipFormattingChars (pos, str, acc)
-          in
-            loop (pos - 1, str, acc)
-          end
+        case chr of
+          #"\"" => (pos, String.implode acc)
+        | #"\\" =>
+            let
+              val acc = escapeFrontChars (chr :: acc)
+              val pos = skipFormattingChars (pos, str, acc)
+            in
+              loop (pos - 1, str, acc)
+            end
+        | _ => loop (pos - 1, str, chr :: acc)
       end
 
   fun rewrite (pos, str) = loop (pos, str, [])

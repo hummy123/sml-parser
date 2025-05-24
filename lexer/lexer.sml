@@ -103,14 +103,14 @@ struct
   fun scanStep (pos, str, dfa, finish, acc) =
     if pos < 0 then
       getToken (str, finish, dfa, acc)
+    else if AllDfa.areAllDead dfa then
+      getToken (str, finish, dfa, acc)
     else
       let
         val chr = String.sub (str, pos)
         val dfa = AllDfa.update (chr, dfa, pos)
       in
-        if AllDfa.areAllDead dfa then
-          getToken (str, finish, dfa, acc)
-        else if chr = #"\"" then
+        if chr = #"\"" then
           (* found double quotes so we would like to parse string. *)
           let val (newPos, str) = StringRewrite.rewrite (pos - 1, str)
           in (newPos, STRING str :: acc)
@@ -131,3 +131,7 @@ struct
     if String.size str = 0 then [EOF]
     else scanString (String.size str - 1, str, [EOF])
 end
+
+val hello = "why \"yyy_\\      \\____lin\" "
+
+val lex = Lexer.lex
