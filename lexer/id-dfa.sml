@@ -1,42 +1,48 @@
 structure IdDfa =
 struct
+  (* first char of ID must be alpha, 
+   * but consecutive chars could be alpha, numeric, or underscore.
+   * This DFA works when an ID is read from the end of the string to the start. *)
+
   val dead = 0
-  val start = 1
-  val final = 2
+  val begin = 1
+  val consecutiveChar = 2
+  val final = 3
 
   fun mkDead _ = 0
 
-  fun mkStart i =
-    let val chr = Char.chr i
-    in if Char.isAlpha chr then final else dead
-    end
-
-  fun mkFinal i =
-    let val chr = Char.chr i
-    in if Char.isAlphaNum chr orelse chr = #"_" then final else dead
+  fun mkBegin i =
+    let
+      val chr = Char.chr i
+    in
+      if Char.isAlpha chr then final
+      else if Char.isDigit chr orelse chr = #"_" then consecutiveChar
+      else dead
     end
 
   val deadTable = Vector.tabulate (255, mkDead)
-  val startTable = Vector.tabulate (255, mkStart)
-  val finalTable = Vector.tabulate (255, mkFinal)
+  val beginTable = Vector.tabulate (255, mkBegin)
+  val consecutiveCharTable = beginTable
+  val finalTable = beginTable
 
-  val states = vector [deadTable, startTable, finalTable]
+  val states = vector [deadTable, beginTable, consecutiveCharTable, finalTable]
 
-  fun isFinal i = i = final orelse i = start
+  fun isFinal i = i = final
 
   fun helpIsId (str, pos, state) =
-    if pos = String.size str then
+    if pos < 0 then
       isFinal state
     else
       let
-        val table = Vector.sub (states, state)
         val chr = String.sub (str, pos)
+        val table = Vector.sub (states, state)
         val state = Vector.sub (table, Char.ord chr)
       in
-        helpIsId (str, pos + 1, state)
+        helpIsId (str, pos - 1, state)
       end
 
-  fun isId (str, pos) = helpIsId (str, pos, start)
+  fun isId str =
+    helpIsId (str, String.size str - 1, begin)
 
   fun getNewState (chr, prevState) =
     let val table = Vector.sub (states, prevState)
