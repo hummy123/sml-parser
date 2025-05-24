@@ -6,6 +6,8 @@ int-dfa.sml
 punct-dfa.sml
 wildcard-dfa.sml
 type-id-dfa.sml
+lex-string.sml
 
 token.sml
+all-dfa.sml
 lexer.sml
