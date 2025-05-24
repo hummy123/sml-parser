@@ -112,7 +112,7 @@ struct
           getToken (str, finish, dfa, acc)
         else if chr = #"\"" then
           (* found double quotes so we would like to parse string. *)
-          let val (newPos, str) = LexString.getString (pos + 1, str, [])
+          let val (newPos, str) = StringRewrite.rewrite (pos - 1, str)
           in (newPos, STRING str :: acc)
           end
         else
@@ -128,6 +128,6 @@ struct
       end
 
   fun lex str =
-    if String.size str = 0 then []
+    if String.size str = 0 then [EOF]
     else scanString (String.size str - 1, str, [EOF])
 end
