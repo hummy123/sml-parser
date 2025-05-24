@@ -4,6 +4,8 @@ struct
    * converting escape character codes to the character codes they are meant to
    * represent. *)
 
+  type zipper = {left: char list, right: char list}
+
   fun hexCharToNum chr =
     case Char.toLower chr of
       #"0" => 0
@@ -40,6 +42,19 @@ struct
         else
           raise Fail "expected \\ddd where each d is a digit from 0 to 9"
     | _ => raise Fail "expected \\ddd where each d is a digit from 0 to 9"
+
+  fun helpSkip old =
+    case old of
+      #"\\" :: tl => tl
+    | [] =>
+        raise Fail
+          "expected formatting sequence \\ ... \\ but no closing \\ found"
+    | hd :: tl => helpSkip tl
+
+  fun skipFormattingChars old =
+    case old of
+      #"\\" :: tl => helpSkip tl
+    | _ => old
 
   fun escapeFrontChars charList =
     case charList of
@@ -95,37 +110,25 @@ struct
               end
           | chr :: tl =>
               if Char.isDigit chr then escapeThreeDigits (chr, tl) else charList
-          | _ => charList
+          | [] => charList
         end
     | _ => charList
 
-  fun helpSkip (pos, str) =
-    if pos = String.size str then
-      raise Fail
-        "error: expected \\ to close formatting chars but got unclosed string"
-    else
-      let
-        val chr = String.sub (str, pos)
-      in
-        if chr = #"\\" then
-          pos
-        else if chr = #"\"" then
-          raise Fail
-            "expected matching \\ to close formatting chars\
-            \but string closed before matching \\ was found"
-        else if Char.isSpace chr then
-          helpSkip (pos - 1, str)
-        else
-          (* error: found non-formatting char *)
-          raise Fail
-            ("expected formatting char but found " ^ String.implode [chr]
-             ^ " at pos (" ^ Int.toString pos ^ ")")
-      end
+  fun moveOldHeadToNewHead (new, oldHd :: oldTl) = (oldHd :: new, oldTl)
+    | moveOldHeadToNewHead (new, []) = (new, [])
 
-  fun skipFormattingChars (pos, str, acc) =
-    case acc of
-      #"\\" :: _ => helpSkip (pos - 1, str)
-    | _ => pos
+  fun rewriteEscapeChars (new, old) =
+    case old of
+      #"\\" :: tl =>
+        let
+          val old = escapeFrontChars old
+          val old = skipFormattingChars old
+          val (new, old) = moveOldHeadToNewHead (new, old)
+        in
+          rewriteEscapeChars (new, old)
+        end
+    | hd :: tl => rewriteEscapeChars (hd :: new, tl)
+    | [] => String.implode (List.rev new)
 
   fun loop (pos, str, acc) =
     if pos < 0 then
@@ -135,14 +138,7 @@ struct
         val chr = String.sub (str, pos)
       in
         case chr of
-          #"\"" => (pos, String.implode acc)
-        | #"\\" =>
-            let
-              val acc = escapeFrontChars (chr :: acc)
-              val pos = skipFormattingChars (pos, str, acc)
-            in
-              loop (pos - 1, str, acc)
-            end
+          #"\"" => let val str = rewriteEscapeChars ([], acc) in (pos, str) end
         | _ => loop (pos - 1, str, chr :: acc)
       end
 

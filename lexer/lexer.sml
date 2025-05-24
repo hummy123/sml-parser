@@ -132,6 +132,22 @@ struct
     else scanString (String.size str - 1, str, [EOF])
 end
 
-val hello = "why \"yyy_\\      \\____lin\" "
+fun read (io, str) =
+  case TextIO.inputLine io of
+    SOME line => read (io, str ^ line)
+  | NONE => str
 
-val lex = Lexer.lex
+fun main () =
+  let
+    val io = TextIO.openIn "text.txt"
+    val str = read (io, "")
+    val () = TextIO.closeIn io
+    val tokens = Lexer.lex str
+  in
+    case tokens of
+      Token.STRING str :: _ =>
+        print ("str found:\n" ^ String.toString str ^ "\n")
+    | _ => print ("str not found\n")
+  end
+
+val () = main ()
