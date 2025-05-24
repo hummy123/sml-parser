@@ -59,7 +59,10 @@ struct
   fun getMin (lst, minSoFar) =
     case lst of
       ~1 :: tl => getMin (tl, minSoFar)
-    | hd :: tl => getMin (tl, Int.min (hd, minSoFar))
+    | hd :: tl =>
+        let val minSoFar = if minSoFar = ~1 then hd else Int.min (hd, minSoFar)
+        in getMin (tl, Int.min (hd, minSoFar))
+        end
     | [] => minSoFar
 
   fun getToken (str, finish, dfa, acc) =
@@ -81,7 +84,7 @@ struct
         (lastWild, WILDCARD :: acc)
       else
         let
-          val str = String.substring (str, min, finish - min)
+          val str = String.substring (str, min, finish - min + 1)
         in
           if min = lastID then
             (lastID, getWordOrID str :: acc)
@@ -117,14 +120,14 @@ struct
       end
 
   fun scanString (pos, str, acc) =
-    if pos = String.size str then
+    if pos < 0 then
       acc
     else
       let val (newPos, acc) = scanStep (pos, str, AllDfa.initial, pos, acc)
-      in scanString (newPos, str, acc)
+      in if newPos = 0 then acc else scanString (newPos - 1, str, acc)
       end
 
-  fun getTokens str =
+  fun lex str =
     if String.size str = 0 then []
     else scanString (String.size str - 1, str, [EOF])
 end
