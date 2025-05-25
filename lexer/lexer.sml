@@ -48,13 +48,32 @@ struct
     | "=>" => EQUAL_ARROW
     | "->" => DASH_ARROW
     | "#" => HASH
-    | "." => DOT
     | _ => ID str
 
   fun getTypeID str =
     let val isEqType = String.size str >= 2 andalso String.sub (str, 1) = #"'"
     in TYPE_ID {isEqType = isEqType, id = str}
     end
+
+  fun helpSplitLongID (inStr, pos, strList, chrList) =
+    if pos < 0 then
+      let val outStr = String.implode chrList
+      in outStr :: strList
+      end
+    else
+      let
+        val chr = String.sub (inStr, pos)
+      in
+        if chr = #"." then
+          let val outStr = String.implode chrList
+          in helpSplitLongID (inStr, pos - 1, outStr :: strList, [])
+          end
+        else
+          helpSplitLongID (inStr, pos - 1, strList, chr :: chrList)
+      end
+
+  fun splitLastLongID str =
+    helpSplitLongID (str, String.size str - 1, [], [])
 
   fun getMin (lst, minSoFar) =
     case lst of
@@ -67,9 +86,27 @@ struct
 
   fun getToken (str, finish, dfa, acc) =
     let
-      val {lastID, lastInt, lastPunct, lastWild, lastType, lastSpace, ...} = dfa
+      val
+        { lastID
+        , lastInt
+        , lastPunct
+        , lastWild
+        , lastType
+        , lastSpace
+        , lastLongID
+        , ...
+        } = dfa
       val min = getMin
-        ([lastID, lastInt, lastPunct, lastWild, lastType, lastSpace], ~1)
+        ( [ lastID
+          , lastInt
+          , lastPunct
+          , lastWild
+          , lastType
+          , lastSpace
+          , lastLongID
+          ]
+        , ~1
+        )
     in
       if min = ~1 then
         let
@@ -88,6 +125,13 @@ struct
         in
           if min = lastID then
             (lastID, getWordOrID str :: acc)
+          else if min = lastLongID then
+            let
+              val strList = splitLastLongID str
+              val token = LONG_ID strList
+            in
+              (lastLongID, token :: acc)
+            end
           else if min = lastInt then
             case Int.fromString str of
               SOME num => (lastInt, INT num :: acc)
@@ -132,21 +176,16 @@ struct
     else scanString (String.size str - 1, str, [EOF])
 end
 
-fun read (io, str) =
-  case TextIO.inputLine io of
-    SOME line => read (io, str ^ line)
-  | NONE => str
-
 fun main () =
   let
-    val io = TextIO.openIn "text.txt"
-    val str = read (io, "")
-    val () = TextIO.closeIn io
+    val str = "Int.toString"
     val tokens = Lexer.lex str
   in
     case tokens of
-      Token.STRING str :: _ =>
-        print ("str found:\n" ^ String.toString str ^ "\n")
+      Token.LONG_ID strList :: _ =>
+        let val str = String.concatWith "." strList
+        in print ("str found:\n" ^ String.toString str ^ "\n")
+        end
     | _ => print ("str not found\n")
   end
 

@@ -2,10 +2,11 @@ structure Token =
 struct
   datatype t =
     INT of int
-  | ID of string
   | STRING of string
   | BOOL of bool
+  | ID of string
   | TYPE_ID of {isEqType: bool, id: string}
+  | LONG_ID of string list
 
   (* reserved words *)
   | LET
@@ -50,18 +51,20 @@ struct
   | DASH_ARROW
   | HASH
 
-  (* singleton dot is not in grammar; maybe remove? *)
-  | DOT
   | EOF
 
   fun toString tok =
     case tok of
       INT num => "INT(" ^ Int.toString num ^ ")"
-    | ID id => "ID(" ^ id ^ ")"
     | STRING str => "STRING(" ^ str ^ ")"
     | BOOL b => "BOOL(" ^ Bool.toString b ^ ")"
+    | ID id => "ID(" ^ id ^ ")"
     | TYPE_ID {isEqType, id} =>
         "TYPE_ID{isEqType: " ^ Bool.toString isEqType ^ ", id: " ^ id ^ ")"
+    | LONG_ID strList =>
+        let val str = String.concatWith "," strList
+        in String.concat ["LONG_ID(", str, ")"]
+        end
 
     (* reserved words *)
     | LET => "let"
@@ -106,6 +109,5 @@ struct
     | DASH_ARROW => "->"
     | HASH => "#"
 
-    | DOT => "."
     | EOF => "EOF"
 end
