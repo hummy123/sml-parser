@@ -6,6 +6,7 @@ int-dfa.sml
 punct-dfa.sml
 wildcard-dfa.sml
 type-id-dfa.sml
+long-id-dfa.sml
 string-rewrite.sml
 
 token.sml
