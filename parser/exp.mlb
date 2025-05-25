@@ -1,9 +1,11 @@
 $(SML_LIB)/basis/basis.mlb
 
 ../vendored/brolib-sml/src/gap_map.sml
+../vendored/brolib-sml/src/gap_set.sml
+
 ../lexer/lex.mlb
 
-../parser/string-map.sml
+../parser/parse-env.sml
 ../parser/parse-type.sml
 ../parser/infix-type.sml
 ../parser/combo.sml
