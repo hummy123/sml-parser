@@ -3,7 +3,7 @@ struct
   datatype type_grm =
     TY_VAR of {isEq: bool, id: string}
   | RECORD_TYPE of (string * type_grm) list
-  | TY_CON of {tyseq: type_grm list, con: string}
+  | TY_CON of {tyseq: type_grm list, con: string list}
   | TUPLE_TYPE of type_grm list
   | FUN_TY of type_grm list
 
