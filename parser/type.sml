@@ -83,10 +83,14 @@ struct
 
   and multiTy (tokens, acc, env) =
     Combo.next (baseTy (tokens, env), fn (tokens, newTy) =>
-      case tokens of
-        L.COMMA :: tl => multiTy (tl, newTy :: acc, env)
-      | L.R_PAREN :: tl => OK (tl, List.rev acc)
-      | _ => ERR)
+      let
+        val acc = newTy :: acc
+      in
+        case tokens of
+          L.COMMA :: tl => multiTy (tl, acc, env)
+        | L.R_PAREN :: tl => OK (tl, List.rev acc)
+        | _ => ERR
+      end)
 
   and parenTy (tokens, env) =
     case tokens of
@@ -176,14 +180,15 @@ struct
         raise Fail "type.sml 176: don't know how to parse LONG_ID in type yet"
     | _ => ERR
 
+  and loopTypeConstructors (tokens, newTy, env) =
+    case typedConstructor (tokens, newTy, env) of
+      OK (tokens, newTy) => loopTypeConstructors (tokens, newTy, env)
+    | ERR => OK (tokens, newTy)
+
   and baseTy (tokens, env) =
     case typ (tokens, env) of
       (result as OK (tokens, newTy)) =>
-        let in
-          case typedConstructor (tokens, newTy, env) of
-            (result as OK _) => result
-          | ERR => result
-        end
+        loopTypeConstructors (tokens, newTy, env)
     | ERR => ERR
 
   fun multiTyVarSeq (tokens, acc) =
@@ -204,3 +209,18 @@ struct
            OK (tokens, newTy) => OK (tokens, [newTy])
          | ERR => ERR)
 end
+
+fun parse str =
+  let
+    open ParseType
+    val tokens = Lexer.lex str
+    val env =
+      { infixMap = ParseEnv.StringMap.empty
+      , constructor = ParseEnv.StringSet.empty
+      }
+    val env = ParseEnv.addConstructor ("int", env)
+    val env = ParseEnv.addConstructor ("char", env)
+    val env = ParseEnv.addConstructor ("list", env)
+  in
+    Type.baseTy (tokens, env)
+  end
