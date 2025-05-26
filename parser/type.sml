@@ -165,7 +165,26 @@ struct
     | ERR => ERR
 
   (* BASE TYPE *)
-  and baseTy (tokens, env) = raise Fail ""
+  and typedConstructor (tokens, newTy, env) =
+    case tokens of
+      L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          OK (tl, TY_CON {tyseq = [newTy], con = [id]})
+        else
+          ERR
+    | L.LONG_ID idList :: tl =>
+        raise Fail "type.sml 176: don't know how to parse LONG_ID in type yet"
+    | _ => ERR
+
+  and baseTy (tokens, env) =
+    case typ (tokens, env) of
+      (result as OK (tokens, newTy)) =>
+        let in
+          case typedConstructor (tokens, newTy, env) of
+            (result as OK _) => result
+          | ERR => result
+        end
+    | ERR => ERR
 
   fun multiTyVarSeq (tokens, acc) =
     case tokens of
