@@ -2,6 +2,49 @@ structure Pat =
 struct
   open ParseType
 
+  (* grammar for patterns:
+   *
+   * patrow      ::= lab = pat (, patrow)
+   *                                  pattern
+   *                 id (: base_type) (as pat) (, patrow)
+   *                                  variable
+   *                 ...
+   *                                  wildcard
+   *
+   * atomic_pat  ::= -
+   *                                  wildcard
+   *                 scon
+   *                                  special constant
+   *                 (op) longbid
+   *                                  value identifier
+   *                 { patrow }
+   *                                  record pattern
+   *                 ()
+   *                                  unit pattern
+   *                 (pat1, ...patn)
+   *                                  tuple pattern
+   *                 (pat)
+   *                                  parenthesised pattern
+   *                 [pat1, ...patn]
+   *                                  list pattern
+   *                #[pat1, ...patn]
+   *                                  vector pattern
+   *
+   * base_pat    ::= atomic_pat
+   *                                  atomic pattern
+   *                 (op) longvid atpat
+   *                                  constructed pattern
+   *                 (op) vid (: base_type) as pat
+   *                                  layered pattern
+   *
+   * pat         ::= base_pat
+   *                                  base pattern
+   *                 pat1 vid pat2
+   *                                  infix constructor pattern
+   *                 pat : base_type
+   *                                  typed pattern
+   * *)
+
   structure L = Lexer
 
   fun tryOrDefault (f, exp, tokens) =
