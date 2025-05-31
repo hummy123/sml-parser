@@ -71,13 +71,36 @@ struct
       L.WILDCARD :: tl => OK (tl, WILDCARD_PAT)
     | _ => ERR
 
-  fun variable (tokens, env) = 
+  fun makeConstruction (id, tl, env) =
+    case pat (tl, env) of
+      OK (tl, newPat) => OK (tl, CONSTRUCTED_PAT (id, SOME newPat))
+    | ERR => OK (tl, CONSTRUCTED_PAT (id, NONE))
+
+  and construction (tokens, env) =
     case tokens of
-      L.OP :: L.ID id :: tl => OK (tl, ID_PAT id)
+      L.OP :: L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then makeConstruction (id, tl, env)
+        else ERR
     | L.ID id :: tl =>
         if ParseEnv.isInfix (id, env) then
           ERR
+        else if ParseEnv.isConstructor (id, env) then
+          makeConstruction (id, tl, env)
         else
-          OK (tl, ID_PAT id)
+          ERR
+    | L.OP :: L.LONG_ID _ :: tl =>
+        raise Fail "pat.sml 94: don't know how to parse LONG_ID yet"
+    | L.LONG_ID _ :: tl =>
+        raise Fail "pat.sml 96: don't know how to parse LONG_ID yet"
     | _ => ERR
+
+  and variable (tokens, env) =
+    case tokens of
+      L.OP :: L.ID id :: tl => OK (tl, ID_PAT id)
+    | L.ID id :: tl =>
+        if ParseEnv.isInfix (id, env) then ERR else OK (tl, ID_PAT id)
+    | _ => ERR
+
+  and pat (tokens, env) =
+    raise Fail "pat.sml: pat not implemented yet"
 end

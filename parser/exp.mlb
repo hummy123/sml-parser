@@ -10,3 +10,4 @@ $(SML_LIB)/basis/basis.mlb
 ../parser/infix-type.sml
 ../parser/combo.sml
 ../parser/type.sml
+../parser/pat.sml

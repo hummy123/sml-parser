@@ -17,7 +17,7 @@ struct
   | LIST_PAT of pat list
   | VECTOR_PAT of pat vector
   | WILDCARD_PAT
-  | CONSTRUCTED_PAT of string * pat
+  | CONSTRUCTED_PAT of string * pat option
   | TYPE_ANNOTATED of pat * type_grm
   | AS_PAT of pat * pat
 
