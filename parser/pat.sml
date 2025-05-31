@@ -15,8 +15,10 @@ struct
    *                                  wildcard
    *                 scon
    *                                  special constant
-   *                 (op) longbid
-   *                                  value identifier
+   *                 (op) id
+   *                                  variable
+   *                 (op) longbid (pat)
+   *                                  construction
    *                 { patrow }
    *                                  record pattern
    *                 ()
@@ -69,4 +71,13 @@ struct
       L.WILDCARD :: tl => OK (tl, WILDCARD_PAT)
     | _ => ERR
 
+  fun variable (tokens, env) = 
+    case tokens of
+      L.OP :: L.ID id :: tl => OK (tl, ID_PAT id)
+    | L.ID id :: tl =>
+        if ParseEnv.isInfix (id, env) then
+          ERR
+        else
+          OK (tl, ID_PAT id)
+    | _ => ERR
 end

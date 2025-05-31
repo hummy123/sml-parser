@@ -38,6 +38,9 @@ struct
 
   fun getInfix (key, {infixMap, constructor}) = StringMap.get (key, infixMap)
 
+  fun isInfix (key, {infixMap, constructor = _}) = 
+    StringMap.get (key, infixMap) <> NONE
+
   fun addConstructor (key, {constructor, infixMap}) =
     let val constructor = StringSet.add (key, constructor)
     in {constructor = constructor, infixMap = infixMap}
