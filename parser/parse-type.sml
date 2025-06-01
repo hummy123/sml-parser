@@ -11,7 +11,12 @@ struct
     INT_PAT of int
   | BOOL_PAT of bool
   | STRING_PAT of string
-  | RECORD_PAT of (string * pat) list
+  | RECORD_PAT of
+      { fieldName: string
+      , fieldPat: pat option
+      , asPat: pat option
+      , typ: type_grm option
+      } list
   | ID_PAT of string
   | UNIT_PAT
   | LIST_PAT of pat list
