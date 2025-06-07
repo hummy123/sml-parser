@@ -176,6 +176,47 @@ struct
     | L.L_BRACE :: tl => patrow (tl, env, [])
     | _ => ERR
 
+  and tupleRow (tokens, env, acc, ctr) =
+    case pat (tokens, env) of
+      OK (tokens, newPat) =>
+        let
+          val acc =
+            { fieldName = Int.toString ctr
+            , fieldPat = SOME newPat
+            , asPat = NONE
+            , typ = NONE
+            } :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => tupleRow (tl, env, acc, ctr + 1)
+          | L.R_PAREN :: tl => OK (tl, RECORD_PAT (List.rev acc))
+          | _ =>
+              raise Fail
+                "pat.sml 189: expected , or ) after pattern in tupleRow"
+        end
+    | ERR => raise Fail "pat.sml 187: expected pat in tupleRow"
+
+  and tuple (tokens, env) =
+    case tokens of
+      L.L_PAREN :: L.R_PAREN :: tl => OK (tl, UNIT_PAT)
+    | L.L_PAREN :: tl =>
+        Combo.next (pat (tl, env), fn (tokens, newPat) =>
+          case tokens of
+            L.R_PAREN :: tl => OK (tl, newPat)
+          | L.COMMA :: tl =>
+              let
+                val initial =
+                  { fieldName = "1"
+                  , fieldPat = SOME newPat
+                  , asPat = NONE
+                  , typ = NONE
+                  }
+              in
+                tupleRow (tl, env, [initial], 2)
+              end
+          | _ => raise Fail "pat.sml 187: expected paren pat or tuple pat")
+    | _ => ERR
+
   and pat (tokens, env) =
     raise Fail "pat.sml: pat not implemented yet"
 end
