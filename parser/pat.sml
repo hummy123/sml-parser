@@ -217,6 +217,24 @@ struct
           | _ => raise Fail "pat.sml 187: expected paren pat or tuple pat")
     | _ => ERR
 
+  and loopListPat (tokens, env, acc) =
+    case pat (tokens, env) of
+      OK (tokens, newPat) =>
+        let
+          val acc = newPat :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => loopListPat (tl, env, acc)
+          | L.R_BRACKET :: tl => OK (tl, LIST_PAT (List.rev acc))
+          | _ => raise Fail "pat.sml 229: expected , or ] after pattern in list"
+        end
+    | ERR => raise Fail "pat.sml 231: expected pattern in list"
+
+  and listPat (tokens, env) =
+    case tokens of
+      L.L_BRACKET :: tl => loopListPat (tl, env, [])
+    | _ => ERR
+
   and pat (tokens, env) =
     raise Fail "pat.sml: pat not implemented yet"
 end
