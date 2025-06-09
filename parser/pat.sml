@@ -326,7 +326,7 @@ struct
     | _ => ERR
 
   and basePat (tokens, env) =
-    raise Fail "pat.sml: basePat unimplemented"
+    Combo.choiceData ([layeredPat, baseConstructed, atomicPat], tokens, env)
 
   and pat (tokens, env) =
     raise Fail "pat.sml: pat not implemented yet"
