@@ -279,6 +279,55 @@ struct
           , env
           )
 
+  and baseConstructed (tokens, env) =
+    case tokens of
+      L.OP :: L.LONG_ID longVid :: tl =>
+        raise Fail "pat.sml 293: don't know how to deal with LONG_ID"
+    | L.LONG_ID longVid :: tl =>
+        raise Fail "pat.sml 294: don't know how to deal with LONG_ID"
+    | L.OP :: L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          Combo.next (atomicPat (tl, env), fn (tokens, newPat) =>
+            OK (tokens, CONSTRUCTED_PAT (id, SOME newPat)))
+        else
+          ERR
+    | L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          Combo.next (atomicPat (tl, env), fn (tokens, newPat) =>
+            OK (tokens, CONSTRUCTED_PAT (id, SOME newPat)))
+        else
+          ERR
+    | _ => ERR
+
+  and makeLayeredPat (id, tl, env, typ) =
+    case tl of
+      L.AS :: tl =>
+        Combo.next (pat (tl, env), fn (tokens, newPat) =>
+          let val result = LAYERED_PAT {id = id, typ = typ, asPat = newPat}
+          in OK (tokens, result)
+          end)
+    | _ => raise Fail "pat.sml 338: expected 'as' token in layered pat"
+
+  and layeredPatAfterColon (id, tl, env) =
+    case Type.baseTy (tl, env) of
+      OK (tokens, newTy) => makeLayeredPat (id, tokens, env, SOME newTy)
+    | ERR => raise Fail "pat.sml 313: expected type after : colon"
+
+  and layeredPat (tokens, env) =
+    case tokens of
+      L.OP :: L.ID id :: L.COLON :: tl => layeredPatAfterColon (id, tl, env)
+    | L.OP :: L.ID id :: tl => makeLayeredPat (id, tl, env, NONE)
+    | L.ID id :: L.COLON :: tl =>
+        if ParseEnv.isInfix (id, env) then ERR
+        else layeredPatAfterColon (id, tl, env)
+    | L.ID id :: tl =>
+        if ParseEnv.isInfix (id, env) then ERR
+        else makeLayeredPat (id, tl, env, NONE)
+    | _ => ERR
+
+  and basePat (tokens, env) =
+    raise Fail "pat.sml: basePat unimplemented"
+
   and pat (tokens, env) =
     raise Fail "pat.sml: pat not implemented yet"
 end

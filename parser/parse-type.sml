@@ -25,6 +25,7 @@ struct
   | CONSTRUCTED_PAT of string * pat option
   | TYPE_ANNOTATED of pat * type_grm
   | AS_PAT of pat * pat
+  | LAYERED_PAT of {id: string, typ: type_grm option, asPat: pat}
 
   datatype exp =
     INT_EXP of int
