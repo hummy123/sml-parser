@@ -328,6 +328,28 @@ struct
   and basePat (tokens, env) =
     Combo.choiceData ([layeredPat, baseConstructed, atomicPat], tokens, env)
 
+  and typedPatternOrDefault (tokens, newPat, env) =
+    case tokens of
+      L.COLON :: tl =>
+        let in
+          case Type.baseTy (tl, env) of
+            OK (tokens, newTy) => OK (tokens, TYPE_ANNOTATED (newPat, newTy))
+          | ERR => ERR
+        end
+    | _ => OK (tokens, newPat)
+
+  and infixPat (tokens, lhs, env) = raise Fail "infixPat unimplemented"
+
   and pat (tokens, env) =
-    raise Fail "pat.sml: pat not implemented yet"
+    case basePat (tokens, env) of
+      OK (tokens, newPat) =>
+        let
+          val (tl, newPat) =
+            case infixPat (tokens, newPat, env) of
+              OK (tokens, newPat) => (tokens, newPat)
+            | ERR => (tokens, newPat)
+        in
+          typedPatternOrDefault (tl, newPat, env)
+        end
+    | ERR => ERR
 end
