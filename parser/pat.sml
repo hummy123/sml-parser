@@ -261,13 +261,23 @@ struct
         end
     | ERR => raise Fail "pat.sml 256: expected pattern in vector"
 
-  and vector (tokens, env) =
+  and vectorPat (tokens, env) =
     case tokens of
       L.HASH :: L.L_BRACKET :: L.R_BRACKET :: tl =>
         OK (tl, VECTOR_PAT (Vector.fromList []))
     | L.HASH :: L.L_BRACKET :: tl => loopVectorPat (tl, env, [])
     | L.HASH :: _ => ERR
     | _ => ERR
+
+  and atomicPat (tokens, env) =
+    case Combo.choice ([wildcard, scon], tokens) of
+      (result as OK _) => result
+    | ERR =>
+        Combo.choiceData
+          ( [construction, variable, record, tuple, listPat, vectorPat]
+          , tokens
+          , env
+          )
 
   and pat (tokens, env) =
     raise Fail "pat.sml: pat not implemented yet"
