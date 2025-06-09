@@ -338,18 +338,64 @@ struct
         end
     | _ => OK (tokens, newPat)
 
-  and infixPat (tokens, lhs, env) = raise Fail "infixPat unimplemented"
+  and infixClimb (tokens, lhs, env, min) =
+    case tokens of
+      L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          case ParseEnv.getInfix (id, env) of
+            SOME {isLeft, power} =>
+              if power > min then
+                case pat (tl, env) of
+                  OK (tokens, rhs) =>
+                    let
+                      val nextMin = if isLeft then power + 1 else power
+
+                      val (tokens, rhs) = infixClimb (tl, rhs, env, nextMin)
+                      val lhsRecord =
+                        { fieldName = "1"
+                        , fieldPat = SOME lhs
+                        , typ = NONE
+                        , asPat = NONE
+                        }
+                      val rhsRecord =
+                        { fieldName = "2"
+                        , fieldPat = SOME rhs
+                        , typ = NONE
+                        , asPat = NONE
+                        }
+                      val record = RECORD_PAT [lhsRecord, rhsRecord]
+                      val result = CONSTRUCTED_PAT (id, SOME record)
+                    in
+                      (tokens, result)
+                    end
+                | ERR =>
+                    raise Fail
+                      "pat.sml 363: expected pattern on rhs after ID in infixClimb"
+              else
+                (tokens, lhs)
+          | NONE => (tokens, lhs)
+        else
+          (tokens, lhs)
+    | _ => (tokens, lhs)
+
+  and loopClimb (tokens, lhs, env) =
+    case tokens of
+      L.ID id :: _ =>
+        if ParseEnv.isConstructor (id, env) andalso ParseEnv.isInfix (id, env) then
+          let val (tokens, lhs) = infixClimb (tokens, lhs, env, 0)
+          in loopClimb (tokens, lhs, env)
+          end
+        else
+          (tokens, lhs)
+    | _ => (tokens, lhs)
+
+  and infixPat (tokens, lhs, env) = loopClimb (tokens, lhs, env)
 
   and pat (tokens, env) =
     case basePat (tokens, env) of
       OK (tokens, newPat) =>
-        let
-          val (tl, newPat) =
-            case infixPat (tokens, newPat, env) of
-              OK (tokens, newPat) => (tokens, newPat)
-            | ERR => (tokens, newPat)
-        in
-          typedPatternOrDefault (tl, newPat, env)
+        let val (tl, newPat) = infixPat (tokens, newPat, env)
+        in typedPatternOrDefault (tl, newPat, env)
         end
     | ERR => ERR
 end
