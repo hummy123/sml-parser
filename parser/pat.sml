@@ -137,9 +137,15 @@ struct
     | L.ID fieldName :: tl =>
         let
           val (tl, typ) =
-            case Type.baseTy (tl, env) of
-              OK (tl, typ) => (tl, SOME typ)
-            | ERR => (tl, NONE)
+            case tl of
+              L.COLON :: tl =>
+                (* colon indicates we have a type *)
+                let in
+                  case Type.baseTy (tl, env) of
+                    OK (tl, typ) => (tl, SOME typ)
+                  | ERR => (tl, NONE)
+                end
+            | _ => (tl, NONE)
         in
           case tl of
             L.AS :: tl =>
@@ -232,7 +238,35 @@ struct
 
   and listPat (tokens, env) =
     case tokens of
-      L.L_BRACKET :: tl => loopListPat (tl, env, [])
+      L.L_BRACKET :: L.R_BRACKET :: tl => OK (tl, LIST_PAT [])
+    | L.L_BRACKET :: tl => loopListPat (tl, env, [])
+    | _ => ERR
+
+  and loopVectorPat (tokens, env, acc) =
+    case pat (tokens, env) of
+      OK (tokens, newPat) =>
+        let
+          val acc = newPat :: acc
+        in
+          case tokens of
+            L.COMMA :: tl => loopVectorPat (tl, env, acc)
+          | L.R_BRACKET :: tl =>
+              let
+                val acc = List.rev acc
+                val acc = Vector.fromList acc
+              in
+                OK (tl, VECTOR_PAT acc)
+              end
+          | _ => raise Fail "pat.sml 254: expected , or ] after pat in vector"
+        end
+    | ERR => raise Fail "pat.sml 256: expected pattern in vector"
+
+  and vector (tokens, env) =
+    case tokens of
+      L.HASH :: L.L_BRACKET :: L.R_BRACKET :: tl =>
+        OK (tl, VECTOR_PAT (Vector.fromList []))
+    | L.HASH :: L.L_BRACKET :: tl => loopVectorPat (tl, env, [])
+    | L.HASH :: _ => ERR
     | _ => ERR
 
   and pat (tokens, env) =
