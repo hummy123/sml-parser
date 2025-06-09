@@ -338,19 +338,23 @@ struct
         end
     | _ => OK (tokens, newPat)
 
-  and infixClimb (tokens, lhs, env, min) =
+  and infixClimb (tokens, lhs, env, min, prevPower, wasPrevLeft) =
     case tokens of
       L.ID id :: tl =>
         if ParseEnv.isConstructor (id, env) then
           case ParseEnv.getInfix (id, env) of
             SOME {isLeft, power} =>
-              if power > min then
+              if power = prevPower andalso isLeft <> wasPrevLeft then
+                raise Fail
+                  "pat.sml 348: infix pattern with same precedence on opposing sides"
+              else if power > min then
                 case pat (tl, env) of
                   OK (tokens, rhs) =>
                     let
                       val nextMin = if isLeft then power + 1 else power
+                      val (tokens, rhs, recursePower, recurseIsLeft) =
+                        infixClimb (tl, rhs, env, nextMin, power, isLeft)
 
-                      val (tokens, rhs) = infixClimb (tl, rhs, env, nextMin)
                       val lhsRecord =
                         { fieldName = "1"
                         , fieldPat = SOME lhs
@@ -366,30 +370,34 @@ struct
                       val record = RECORD_PAT [lhsRecord, rhsRecord]
                       val result = CONSTRUCTED_PAT (id, SOME record)
                     in
-                      (tokens, result)
+                      (tokens, result, recursePower, recurseIsLeft)
                     end
                 | ERR =>
                     raise Fail
                       "pat.sml 363: expected pattern on rhs after ID in infixClimb"
               else
-                (tokens, lhs)
-          | NONE => (tokens, lhs)
+                (tokens, lhs, prevPower, wasPrevLeft)
+          | NONE => (tokens, lhs, prevPower, wasPrevLeft)
         else
-          (tokens, lhs)
-    | _ => (tokens, lhs)
+          (tokens, lhs, prevPower, wasPrevLeft)
+    | _ => (tokens, lhs, prevPower, wasPrevLeft)
 
-  and loopClimb (tokens, lhs, env) =
+  and loopClimb (tokens, lhs, env, prevPower, wasPrevLeft) =
     case tokens of
       L.ID id :: _ =>
         if ParseEnv.isConstructor (id, env) andalso ParseEnv.isInfix (id, env) then
-          let val (tokens, lhs) = infixClimb (tokens, lhs, env, 0)
-          in loopClimb (tokens, lhs, env)
+          let
+            val (tokens, lhs, prevPower, wasPrevLeft) = infixClimb
+              (tokens, lhs, env, 0, prevPower, wasPrevLeft)
+          in
+            loopClimb (tokens, lhs, env, prevPower, wasPrevLeft)
           end
         else
           (tokens, lhs)
     | _ => (tokens, lhs)
 
-  and infixPat (tokens, lhs, env) = loopClimb (tokens, lhs, env)
+  and infixPat (tokens, lhs, env) =
+    loopClimb (tokens, lhs, env, ~1, true)
 
   and pat (tokens, env) =
     case basePat (tokens, env) of
