@@ -2,12 +2,78 @@ structure Exp =
 struct
   open ParseType
 
-  exception Az of exp list
-  exception Aa of exp
+  (* grammar for expressions:
+   *
+   * exprow      ::= lab = exp (, exprow)
+   *
+   * atomic_exp  ::= scon
+   *                                  special constant
+   *                 (op) longvid
+   *                                  value identifier
+   *                 {exprow}
+   *                                  record
+   *                 # lab
+   *                                  record selector
+   *                 ()
+   *                                  unit value
+   *                 (exp)
+   *                                  parenthesised expression
+   *                 (exp1, ...expn)
+   *                                  tuple
+   *                 (exp1; ...expn)
+   *                                  sequence expression
+   *                 [exp1, ...expn]
+   *                                  list expression
+   *                #[exp1, ...expn]
+   *                                  vector expression
+   *                 let dec in exp1; ...expn end
+   *                                  let expression
+   *
+   * app_exp     ::= attomic_exp
+   *                                  atomic expression
+   *                 app_exp atomic_exp
+   *                                  multiple atomic expressions
+   *
+   * infix_exp   ::= app_exp
+   *                                  application expression
+   *                 infix_exp1 vid infix_exp2
+   *                                  infix expression
+   *
+   * mrule       ::= pat => exp
+   *
+   * match       ::= mrule (| match)
+   *
+   * base_exp    ::= infix_exp
+   *                                  infix expression or application exp
+   *                 raise exp
+   *                                  raise expression
+   *                 if exp1 then exp2 else exp3
+   *                                  if expression
+   *                 while exp1 do exp2
+   *                                  iteration
+   *                 case exp of match
+   *                                  case expression
+   *                 fn match
+   *                                  function
+   *
+   * loop_exp    ::= exp : ty (loop_exp)
+   *                                  typed expression
+   *                 exp1 andalso exp2 (loop_exp)
+   *                                  conjunction
+   *                 exp1 orelse exp2 (loop_exp)
+   *                                  disjunction
+   *                 exp handle match (loop_exp)
+   *                                  handle expression
+   *                 loop_exp exp
+   *                                  loop expression
+   *
+   * exp         ::= base_exp
+   *                                  base expression
+   *                 loop_exp
+   *                                  loop expression
+   * *)
 
   structure L = Lexer
-  structure StringMap = StringMap
-
 
   (* EXPRESSIONS *)
 

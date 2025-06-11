@@ -7,7 +7,6 @@ $(SML_LIB)/basis/basis.mlb
 
 ../parser/parse-env.sml
 ../parser/parse-type.sml
-../parser/infix-type.sml
 ../parser/combo.sml
 ../parser/type.sml
 ../parser/pat.sml
