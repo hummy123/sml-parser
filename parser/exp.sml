@@ -84,7 +84,17 @@ struct
     | L.STRING s :: tl => OK (tl, STRING_EXP s)
     | _ => ERR
 
-  and nextExprow (tokens, env, acc, fieldName) =
+  fun recordSelector (tokens, env) =
+    case tokens of
+      L.HASH :: L.ID id :: tl => OK (tl, RECORD_SELECTOR id)
+    | L.HASH :: L.INT num :: tl =>
+        if num > 0 then
+          OK (tl, RECORD_SELECTOR (Int.toString num))
+        else
+          raise Fail "exp.sml 94: integer in record selector must be at least 1"
+    | _ => ERR
+
+  fun nextExprow (tokens, env, acc, fieldName) =
     case exp (tokens, env) of
       OK (tl, newExp) =>
         let
@@ -108,12 +118,12 @@ struct
         else
           raise Fail "exp.sml 26: expected = after label in loopExprow"
     | L.INT num :: L.ID "=" :: tl =>
-        if num < 1 then
+        if num > 0 then
           raise Fail "exp.sml 32: integer label must be greater than 1"
         else
           nextExprow (tl, env, acc, Int.toString num)
     | L.INT num :: tl =>
-        if num < 1 then
+        if num > 0 then
           raise Fail "exp.sml 35: integer label must be greater than 1"
         else
           raise Fail "exp.sml 37: expected = after label"
