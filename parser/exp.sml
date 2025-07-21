@@ -136,6 +136,21 @@ struct
         end
     | ERR => ERR
 
+  and sequenceExp (tokens, env, acc) =
+    case exp (tokens, env) of
+      OK (L.SEMI_COLON :: tl, newExp) => sequenceExp (tl, env, newExp :: acc)
+    | OK (L.R_PAREN :: tl, newExp) =>
+        let
+          val acc = newExp :: acc
+          val acc = SEQ_EXP (List.rev acc)
+        in
+          OK (tl, acc)
+        end
+    | OK _ =>
+        raise Fail
+          "exp.sml 149: expected ; or ) after expression in sequenceExp"
+    | ERR => raise Fail "exp.sml 150: expected expression"
+
   and parenExp (token, env) =
     case tokens of
       L.L_PAREN :: L.R_PAREN :: tl => OK (tl, UNIT_EXP)
@@ -143,6 +158,7 @@ struct
         (case exp (tl, env) of
            OK (L.R_PAREN :: tl, newExp) => OK (tl, GROUP_EXP newExp)
          | OK (L.COMMA :: tl, newExp) => tupleExp (tl, env, acc, 2)
+         | OK (L.SEMI_COLON :: tl, newExp) => sequenceExp (tl, env, [newExp])
          | OK _ => raise Fail "exp.sml 147: expected , or } after expression"
          | ERR => raise Fail "exp.sml 148: expected expression after (")
     | ERR => ERR
