@@ -191,6 +191,26 @@ struct
          | ERR => raise Fail "exp.sml 148: expected expression after (")
     | ERR => ERR
 
+  and loopListExp (tokens, env, acc) =
+    case exp (tokens, env) of
+      OK (L.COMMA :: tl, newExp) => loopListExp (tl, env, newExp :: acc)
+    | OK (L.R_BRACKET :: tl, newExp) =>
+        let
+          val acc = newExp :: acc
+          val acc = List.rev acc
+        in
+          OK (tl, LIST_EXP acc)
+        end
+    | OK _ =>
+        raise Fail "exp.sml 205: expected , or ] after expression in list"
+    | ERR =>
+        raise Fail "exp.sml 207: expected expression in list"
+
+  and listExp (tokens, env) =
+    case tokens of
+      L.L_BRACKET :: tl => loopListExp (tl, env, [])
+    | _ => ERR
+
   and exp (tokens, env) =
     raise Fail "exp.sml 124: exp not implemented"
 end
