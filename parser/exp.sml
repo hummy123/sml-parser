@@ -94,6 +94,24 @@ struct
           raise Fail "exp.sml 94: integer in record selector must be at least 1"
     | _ => ERR
 
+  fun valueIdentifier (tokens, env) =
+    case tokens of
+      L.OP :: L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          OK (tl, CONSTUCTOR_EXP id)
+        else
+          raise Fail "exp.sml 103: expected constructor in valueIdentifier"
+    | L.ID id :: tl =>
+        if ParseEnv.isConstructor (id, env) then
+          OK (tl, CONSTUCTOR_EXP id)
+        else
+          ERR
+    | L.OP :: L.LONG_ID :: tl =>
+        raise Fail "exp.sml 105: don't know how to handle LONG_ID yet"
+    | L.LONG_ID :: tl =>
+        raise Fail "exp.sml 112: don't know how to handle LONG_ID yet"
+    | _ => ERR
+
   fun nextExprow (tokens, env, acc, fieldName) =
     case exp (tokens, env) of
       OK (tl, newExp) =>
