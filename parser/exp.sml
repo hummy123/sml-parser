@@ -120,6 +120,35 @@ struct
     | _ => ERR
 
   and exprow (tokens, env) = loopExprow (tokens, env, [])
+
+  and tupleExp (tokens, env, acc, counter) =
+    case exp (tokens, env) of
+      OK (L.COMMA :: tl, newExp) =>
+        let val acc = (Int.toString counter, newExp) :: acc
+        in tupleExp (tl, env, acc, counter + 1)
+        end
+    | OK (L.R_BRACE :: tl, newExp) =>
+        let
+          val acc = (Int.toString counter, newExp) :: acc
+          val acc = RECORD_EXP (List.rev acc)
+        in
+          OK (tl, acc)
+        end
+    | ERR => ERR
+
+  and parenExp (token, env) =
+    case tokens of
+      L.L_PAREN :: L.R_PAREN :: tl => OK (tl, UNIT_EXP)
+    | L.L_PAREN :: tl =>
+        (case exp (tl, env) of
+           OK (L.R_PAREN :: tl, newExp) => OK (tl, GROUP_EXP newExp)
+         | OK (L.COMMA :: tl, newExp) => tupleExp (tl, env, acc, 2)
+         | OK _ => raise Fail "exp.sml 147: expected , or } after expression"
+         | ERR => raise Fail "exp.sml 148: expected expression after (")
+    | ERR => ERR
+
+  and exp (tokens, env) =
+    raise Fail "exp.sml 124: exp not implemented"
 end
 
 fun main () =
