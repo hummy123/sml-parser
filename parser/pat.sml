@@ -135,43 +135,46 @@ struct
         else
           patrowID (tl, Int.toString num, env, acc)
     | L.ID fieldName :: tl =>
-        let
-          val (tl, typ) =
+        if fieldName = "=" then
+          raise Fail "pat.sml 139: expected label but got ="
+        else
+          let
+            val (tl, typ) =
+              case tl of
+                L.COLON :: tl =>
+                  (* colon indicates we have a type *)
+                  let in
+                    case Type.baseTy (tl, env) of
+                      OK (tl, typ) => (tl, SOME typ)
+                    | ERR => (tl, NONE)
+                  end
+              | _ => (tl, NONE)
+          in
             case tl of
-              L.COLON :: tl =>
-                (* colon indicates we have a type *)
-                let in
-                  case Type.baseTy (tl, env) of
-                    OK (tl, typ) => (tl, SOME typ)
-                  | ERR => (tl, NONE)
-                end
-            | _ => (tl, NONE)
-        in
-          case tl of
-            L.AS :: tl =>
-              Combo.next (pat (tl, env), fn (tokens, newPat) =>
+              L.AS :: tl =>
+                Combo.next (pat (tl, env), fn (tokens, newPat) =>
+                  let
+                    val acc =
+                      { fieldName = fieldName
+                      , fieldPat = NONE
+                      , asPat = SOME newPat
+                      , typ = typ
+                      } :: acc
+                  in
+                    nextPatrow (tokens, env, acc)
+                  end)
+            | _ =>
                 let
                   val acc =
                     { fieldName = fieldName
                     , fieldPat = NONE
-                    , asPat = SOME newPat
+                    , asPat = NONE
                     , typ = typ
                     } :: acc
                 in
-                  nextPatrow (tokens, env, acc)
-                end)
-          | _ =>
-              let
-                val acc =
-                  { fieldName = fieldName
-                  , fieldPat = NONE
-                  , asPat = NONE
-                  , typ = typ
-                  } :: acc
-              in
-                nextPatrow (tl, env, acc)
-              end
-        end
+                  nextPatrow (tl, env, acc)
+                end
+          end
     | L.TRIPLE_DOT :: L.R_BRACE :: tl => OK (tl, RECORD_PAT (List.rev acc))
     | L.TRIPLE_DOT :: tl => raise Fail "expected } after ... in patrow"
     | _ => raise Fail "pat.sml 174: expected label in patrow"
