@@ -91,13 +91,13 @@ struct
           val acc = (fieldName, newExp) :: acc
         in
           case tl of
-            L.COMMA :: tl => exprow (tl, env, acc)
+            L.COMMA :: tl => loopExprow (tl, env, acc)
           | L.R_BRACE :: tl => OK (tl, RECORD_EXP (List.rev acc))
           | _ => raise Fail "exp.sml 19: expected , or }"
         end
     | ERR => ERR
 
-  and exprow (tokens, env, acc) =
+  and loopExprow (tokens, env, acc) =
     case tokens of
       L.ID fieldName :: L.ID "=" :: tl =>
         if fieldName = "=" then raise Fail "exp.sml 9: expected label but got ="
@@ -106,7 +106,7 @@ struct
         if fieldName = "=" then
           raise Fail "exp.sml 24: expected label but got ="
         else
-          raise Fail "exp.sml 26: expected = after label in exprow"
+          raise Fail "exp.sml 26: expected = after label in loopExprow"
     | L.INT num :: L.ID "=" :: tl =>
         if num < 1 then
           raise Fail "exp.sml 32: integer label must be greater than 1"
@@ -118,6 +118,8 @@ struct
         else
           raise Fail "exp.sml 37: expected = after label"
     | _ => ERR
+
+  and exprow (tokens, env) = loopExprow (tokens, env, [])
 end
 
 fun main () =
