@@ -97,15 +97,11 @@ struct
   fun valueIdentifier (tokens, env) =
     case tokens of
       L.OP :: L.ID id :: tl =>
-        if ParseEnv.isConstructor (id, env) then
-          OK (tl, CONSTUCTOR_EXP id)
-        else
-          raise Fail "exp.sml 103: expected constructor in valueIdentifier"
+        if ParseEnv.isConstructor (id, env) then OK (tl, CONSTUCTOR_EXP id)
+        else raise Fail "exp.sml 103: expected constructor in valueIdentifier"
     | L.ID id :: tl =>
-        if ParseEnv.isConstructor (id, env) then
-          OK (tl, CONSTUCTOR_EXP id)
-        else
-          ERR
+        if ParseEnv.isConstructor (id, env) then OK (tl, CONSTUCTOR_EXP id)
+        else ERR
     | L.OP :: L.LONG_ID :: tl =>
         raise Fail "exp.sml 105: don't know how to handle LONG_ID yet"
     | L.LONG_ID :: tl =>
@@ -201,14 +197,30 @@ struct
         in
           OK (tl, LIST_EXP acc)
         end
-    | OK _ =>
-        raise Fail "exp.sml 205: expected , or ] after expression in list"
-    | ERR =>
-        raise Fail "exp.sml 207: expected expression in list"
+    | OK _ => raise Fail "exp.sml 205: expected , or ] after expression in list"
+    | ERR => raise Fail "exp.sml 207: expected expression in list"
 
   and listExp (tokens, env) =
     case tokens of
       L.L_BRACKET :: tl => loopListExp (tl, env, [])
+    | _ => ERR
+
+  and loopVectorExp (tokens, env, acc) =
+    case exp (tokens, env) of
+      OK (L.COMMA :: tl, newExp) => loopVectorExp (tl, env, newExp :: acc)
+    | OK (L.R_BRACKET :: tl, newExp) =>
+        let
+          val acc = List.rev (newExp :: acc)
+          val acc = Vector.fromList acc
+        in
+          OK (tl, VECTOR_EXP acc)
+        end
+    | OK _ => ERR
+    | ERR => ERR
+
+  and vectorExp (tokens, env) =
+    case tokens of
+      L.HASH :: L.L_BRACKET :: tl => loopVectorExp (tl, env, [])
     | _ => ERR
 
   and exp (tokens, env) =
