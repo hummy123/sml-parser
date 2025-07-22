@@ -223,6 +223,20 @@ struct
       L.HASH :: L.L_BRACKET :: tl => loopVectorExp (tl, env, [])
     | _ => ERR
 
+  and atomicExp (tokens, env) =
+    Combo.choiceData
+      ( [ scon
+        , recordSelector
+        , valueIdentifier
+        , exprow
+        , parenExp
+        , listExp
+        , vectorExp
+        ]
+      , tokens
+      , env
+      )
+
   and exp (tokens, env) =
     raise Fail "exp.sml 124: exp not implemented"
 end
