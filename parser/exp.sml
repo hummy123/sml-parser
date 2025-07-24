@@ -97,10 +97,9 @@ struct
   fun valueIdentifier (tokens, env) =
     case tokens of
       L.OP :: L.ID id :: tl =>
-        if ParseEnv.isConstructor (id, env) then OK (tl, CONSTUCTOR_EXP id)
-        else raise Fail "exp.sml 103: expected constructor in valueIdentifier"
+        OK (tl, EXP_VAL_ID id)
     | L.ID id :: tl =>
-        if ParseEnv.isConstructor (id, env) then OK (tl, CONSTUCTOR_EXP id)
+        if not (ParseEnv.isInfix (id, env)) then OK (tl, EXP_VAL_ID id)
         else ERR
     | L.OP :: L.LONG_ID :: tl =>
         raise Fail "exp.sml 105: don't know how to handle LONG_ID yet"

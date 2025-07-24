@@ -32,7 +32,6 @@ struct
   | BOOL_EXP of bool
   | STRING_EXP of string
 
-  | CONSTRUCTED_EXP of string
   | RECORD_EXP of (string * exp) list
   | SEQ_EXP of exp list
   | LIST_EXP of exp list
